@@ -1,8 +1,0 @@
-[
-  { "machine_id": "CNC_01", "temperature": 85, "vibration": 2.1, "rpm": 1400, "current": 13 },
-  { "machine_id": "CNC_02", "temperature": 70, "vibration": 1.2, "rpm": 1350, "current": 11 },
-  { "machine_id": "PUMP_04", "temperature": 45, "vibration": 0.5, "rpm": 2800, "current": 8 },
-  { "machine_id": "LATH_07", "temperature": 78, "vibration": 1.9, "rpm": 1200, "current": 15 },
-  { "machine_id": "CONV_12", "temperature": 92, "vibration": 2.8, "rpm": 600, "current": 22 },
-  { "machine_id": "MILL_05", "temperature": 62, "vibration": 0.9, "rpm": 1800, "current": 10 }
-]

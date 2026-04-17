@@ -590,3 +590,135 @@ body {
 
 .call-to-action.primary { background: var(--accent-cyan); color: #00363a; }
 .call-to-action.secondary { background: var(--bg-surface-high); color: white; }
+
+/* --- DIGITAL TWIN SIMULATION MODULE --- */
+.dt-grid-container {
+    padding: 2rem;
+    height: calc(100vh - 8rem);
+    overflow-y: auto;
+}
+
+.dt-simulation-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1.5rem;
+    padding-bottom: 2rem;
+}
+
+.dt-card {
+    background: var(--surface-highest);
+    border-left: 4px solid var(--accent-cyan);
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    transition: transform 0.2s ease;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+
+.dt-card:hover { 
+    border-left-width: 8px;
+    transform: translateY(-4px);
+}
+
+.dt-card.status-warn { border-left-color: #ff9800; }
+.dt-card.status-critical { border-left-color: var(--accent-red); animation: pulse-border 2s infinite; }
+
+@keyframes pulse-border {
+    0% { box-shadow: inset 0 0 0 0 rgba(255, 77, 77, 0.1); }
+    50% { box-shadow: inset 0 0 20px 0 rgba(255, 77, 77, 0.2); }
+    100% { box-shadow: inset 0 0 0 0 rgba(255, 77, 77, 0.1); }
+}
+
+.dt-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.dt-machine-tag {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    color: white;
+    font-size: 1.25rem;
+    letter-spacing: 1px;
+}
+
+.dt-status-label {
+    font-size: 0.65rem;
+    font-weight: 800;
+    padding: 2px 8px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 4px;
+    color: var(--text-muted);
+}
+
+.dt-card-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    padding: 1rem 0;
+    border-top: 1px solid rgba(255,255,255,0.05);
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.dt-metric label {
+    display: block;
+    font-size: 0.6rem;
+    color: var(--text-muted);
+    margin-bottom: 0.25rem;
+}
+
+.dt-metric .val {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 500;
+    color: white;
+}
+
+.dt-metric .val span {
+    font-size: 0.75rem;
+    margin-left: 2px;
+}
+
+.dt-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+}
+
+.dt-risk label {
+    font-size: 0.6rem;
+    color: var(--text-muted);
+}
+
+.dt-risk .risk-val {
+    font-size: 1.25rem;
+    color: var(--accent-cyan);
+    font-weight: 700;
+}
+
+.dt-status-icon {
+    font-size: 2rem;
+    line-height: 1;
+    opacity: 0.5;
+}
+
+.dt-explanation {
+    font-size: 0.75rem;
+    color: #e2e2e8;
+    line-height: 1.4;
+    padding-top: 0.5rem;
+    border-top: 1px dashed rgba(255,255,255,0.1);
+}
+
+.dt-loading, .dt-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 400px;
+    text-align: center;
+}
