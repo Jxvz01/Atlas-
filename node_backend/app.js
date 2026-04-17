@@ -197,13 +197,13 @@ function renderDTModules(machines) {
     if (!container) return;
 
     const STATUS_MAP = {
-        'LOW': { label: 'NOMINAL', icon: '◎', class: 'status-ok' },
-        'MEDIUM': { label: 'CAVITATION_RISK', icon: '△', class: 'status-warn' },
-        'HIGH': { label: 'THERMAL_RUNAWAY', icon: '!', class: 'status-critical' }
+        0: { label: 'NOMINAL', icon: '◎', class: 'status-ok' },
+        1: { label: 'CAVITATION_RISK', icon: '△', class: 'status-warn' },
+        2: { label: 'THERMAL_RUNAWAY', icon: '!', class: 'status-critical' }
     };
 
     const html = machines.map(m => {
-        const status = STATUS_MAP[m.risk] || STATUS_MAP['LOW'];
+        const status = STATUS_MAP[m.status] || STATUS_MAP[0];
         return `
             <div class="dt-card ${status.class}">
                 <div class="dt-card-header">
@@ -213,17 +213,17 @@ function renderDTModules(machines) {
                 <div class="dt-card-body">
                     <div class="dt-metric">
                         <label>TEMPERATURE</label>
-                        <div class="val">${m.temperature.toFixed(1)}<span>°C</span></div>
+                        <div class="val">${m.temperature}<span>°C</span></div>
                     </div>
                     <div class="dt-metric">
                         <label>VIBRATION</label>
-                        <div class="val">${m.vibration.toFixed(2)}<span>mm/s</span></div>
+                        <div class="val">${m.vibration}<span>mm/s</span></div>
                     </div>
                 </div>
                 <div class="dt-card-footer">
                     <div class="dt-risk">
-                        <label>RISK_STATUS</label>
-                        <div class="risk-val">${m.risk}</div>
+                        <label>RISK_SCORE</label>
+                        <div class="risk-val">${m.risk_score}</div>
                     </div>
                     <div class="dt-status-icon">${status.icon}</div>
                 </div>
