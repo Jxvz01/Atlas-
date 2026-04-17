@@ -475,17 +475,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-function simulateAnomaly() {
-    document.body.classList.toggle('emergency-halt');
-    const msg = document.body.classList.contains('emergency-halt') ? "STRESS TEST ACTIVE" : "SYSTEM RESTORED";
-    console.log(msg);
-    if (document.body.classList.contains('emergency-halt')) {
-        alert("SIMULATING FLEET-WIDE CRITICAL STRESS...");
-    }
-}
-
 window.showPage = showPage;
 window.handleSidebarNav = handleSidebarNav;
 window.handleLogout = handleLogout;
-window.simulateAnomaly = simulateAnomaly;
 window.handleLogin = handleLogin;

@@ -50,29 +50,11 @@ body {
     height: 100vh;
     width: 100vw;
     overflow: hidden;
-    background-image: 
-        radial-gradient(circle at 50% 50%, rgba(0, 242, 255, 0.02) 0%, transparent 70%),
-        linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
-        linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-    background-size: 100% 100%, 100% 4px, 3px 100%;
+    background: radial-gradient(circle at 50% -20%, #1a1a20 0%, #08080a 70%);
 }
 
 body::after {
-    content: "";
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: repeating-linear-gradient(
-        0deg,
-        rgba(0, 0, 0, 0.1) 0px,
-        rgba(0, 0, 0, 0.1) 1px,
-        transparent 1px,
-        transparent 2px
-    );
-    pointer-events: none;
-    z-index: 9999;
+    display: none;
 }
 
 /* REQ: Hide scrollbars across the app while keeping functionality */
@@ -493,35 +475,6 @@ body::after {
 .action-btn.secondary { background: rgba(255, 255, 255, 0.05); color: var(--text-primary); border: 1px solid var(--border-subtle); }
 
 .action-btn:hover { transform: translateY(-2px); filter: brightness(1.2); }
-
-.simulate-btn {
-    border: 1px solid var(--status-warn) !important;
-    background: rgba(255, 152, 0, 0.1) !important;
-    color: var(--status-warn) !important;
-}
-
-.simulate-btn:hover {
-    background: var(--status-warn) !important;
-    color: #000 !important;
-    box-shadow: 0 0 20px rgba(255, 152, 0, 0.4);
-}
-
-/* 11. EMERGENCY STRESS STATE */
-body.emergency-halt::before {
-    content: "";
-    position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(255, 77, 77, 0.05);
-    box-shadow: inset 0 0 100px rgba(255, 77, 77, 0.2);
-    pointer-events: none;
-    z-index: 9999;
-    animation: emergency-blink 1s infinite alternate;
-}
-
-@keyframes emergency-blink {
-    from { opacity: 0.5; }
-    to { opacity: 1; }
-}
 
 .auth-footer {
     margin-top: 2.5rem;
