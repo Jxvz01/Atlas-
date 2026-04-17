@@ -121,6 +121,10 @@ function showPage(pageId) {
         setTimeout(renderHomeChart, 50);
     }
 
+    if (pageId === 'analyticsPage' && currentRole === 'ENGINEER') {
+        setTimeout(renderAnalyticsCharts, 50);
+    }
+
     if (pageId === 'digitalTwinPage') startDigitalTwin();
     else stopDigitalTwin();
 }
@@ -370,21 +374,82 @@ function renderAnalyticsContent() {
             <div class="atlas-card">
                 <div class="m-card-header"><h4>RELIABILITY SCORE</h4></div>
                 <div style="font-size: 2.5rem; font-weight: 800; color: var(--status-ok)">98.4<span style="font-size: 1rem">%</span></div>
-                <p style="color: var(--text-muted); font-size: 0.75rem; margin-top: 1rem;">Operating 14.2% above historical quarter baseline.</p>
             </div>
             <div class="atlas-card">
                 <div class="m-card-header"><h4>DOWNTIME PREVENTED</h4></div>
                 <div style="font-size: 2.5rem; font-weight: 800; color: var(--accent-cyan)">142<span style="font-size: 1rem">HRS</span></div>
-                <p style="color: var(--text-muted); font-size: 0.75rem; margin-top: 1rem;">Calculated based on detected pre-failure trends.</p>
             </div>
         </div>
-        <div class="telemetry-focus" style="margin-top: 2rem;">
-            <div class="focus-header"><h3>FLEET PERFORMANCE TRENDS (7D)</h3></div>
-            <div style="height: 300px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.2); border-radius: 8px;">
-                <p style="color: var(--text-muted); font-family: var(--font-header); letter-spacing: 2px;">ENCRYPTED TREND DATA STREAM active...</p>
+        
+        <div class="analytics-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 2.5rem;">
+            <div class="atlas-card">
+                <div class="m-card-header"><h4>FLEET TEMPERATURE TREND</h4></div>
+                <div style="height: 200px;"><canvas id="fleetTempChart"></canvas></div>
+            </div>
+            <div class="atlas-card">
+                <div class="m-card-header"><h4>FLEET VIBRATION TREND</h4></div>
+                <div style="height: 200px;"><canvas id="fleetVibChart"></canvas></div>
+            </div>
+            <div class="atlas-card">
+                <div class="m-card-header"><h4>FLEET RPM TREND</h4></div>
+                <div style="height: 200px;"><canvas id="fleetRpmChart"></canvas></div>
+            </div>
+            <div class="atlas-card">
+                <div class="m-card-header"><h4>FLEET CURRENT TREND</h4></div>
+                <div style="height: 200px;"><canvas id="fleetCurrChart"></canvas></div>
             </div>
         </div>
     `;
+}
+
+function renderAnalyticsCharts() {
+    const chartIds = ['fleetTempChart', 'fleetVibChart', 'fleetRpmChart', 'fleetCurrChart'];
+    const metrics = ['temp', 'vib', 'rpm', 'curr'];
+    const colors = ['#ff4d4d', '#11ff9b', '#00f2ff', '#ff9800'];
+
+    chartIds.forEach((id, idx) => {
+        const ctx = document.getElementById(id);
+        if (!ctx) return;
+
+        // Destroy previous to avoid memory leaks
+        if (chartInstances[id]) chartInstances[id].destroy();
+
+        // Calculate Fleet Average of the metric
+        const aggregateData = historyMap["CNC_01"][metrics[idx]].map((_, timeIdx) => {
+            let sum = 0;
+            let count = 0;
+            Object.values(historyMap).forEach(mHist => {
+                sum += mHist[metrics[idx]][timeIdx];
+                count++;
+            });
+            return sum / count;
+        });
+
+        chartInstances[id] = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: Array(30).fill(''),
+                datasets: [{
+                    label: metrics[idx].toUpperCase(),
+                    data: aggregateData,
+                    borderColor: colors[idx],
+                    backgroundColor: colors[idx] + '10',
+                    borderWidth: 2,
+                    tension: 0.4,
+                    pointRadius: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#666' } },
+                    x: { display: false }
+                }
+            }
+        });
+    });
 }
 
 function renderDiagnosticsContent() {
@@ -451,6 +516,10 @@ function startGlobalSimulation() {
             
             if (document.getElementById('homePage').style.display !== 'none') {
                 renderHomeChart();
+            }
+
+            if (currentRole === 'ENGINEER' && document.getElementById('analyticsPage').style.display === 'block') {
+                renderAnalyticsCharts();
             }
         } catch (e) {
             console.error("Link failure", e);
