@@ -42,10 +42,15 @@ async function init() {
         };
     });
 
-    // Hide login, show app
-    document.getElementById('login-container').style.display = 'none';
-    document.querySelector('.app-container').style.display = 'flex';
+    // Initialize Machine Data if empty to prevent grid flickering
+    if (machineData.length === 0) {
+        machineData = ["CNC_01", "CNC_02", "PUMP_03", "CONVEYOR_04"].map(id => ({
+            machine_id: id, temperature: 0, vibration: 0, rpm: 0, current: 0, 
+            risk: 'LOW', priority: 1, explanation: 'Syncing...'
+        }));
+    }
 
+    populateStaticShells();
     connectToSensorStreams();
     showPage('homePage');
 }
@@ -114,7 +119,10 @@ function showPage(pageId) {
     
     document.querySelectorAll('.view-links a').forEach(tab => tab.classList.remove('active'));
     const activeTabId = tabs[pageId];
-    if (activeTabId) document.getElementById(activeTabId).classList.add('active');
+    if (activeTabId) {
+        const tabEl = document.getElementById(activeTabId);
+        if (tabEl) tabEl.classList.add('active');
+    }
 
     if (pageId === 'homePage') {
         setTimeout(renderHomeChart, 50);
@@ -158,6 +166,49 @@ function renderRoleUI() {
     }
 }
 
+function populateStaticShells() {
+    // 1. Home Shell
+    const home = document.getElementById('homePage');
+    if (home) {
+        home.innerHTML = `
+            <div id="overview" class="view-header">
+                <div class="view-title">
+                    <h2>Operational <span>Intelligence</span></h2>
+                    <div class="view-subtitle">System Node: OSCAR-09 • Pulse Synchronized</div>
+                </div>
+            </div>
+            <div id="telemetry" class="telemetry-focus">
+                <div class="focus-header"><h3>LIVE TELEMETRY STREAM</h3></div>
+                <div class="big-chart-wrap"><canvas id="home-telemetry-chart"></canvas></div>
+            </div>
+            <div id="riskMatrix" class="card-grid">
+                <!-- Fleet summary cards -->
+            </div>
+            <div id="machineGrid" class="card-grid" style="margin-top: 2rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 2rem;">
+                <!-- Individual machine cards -->
+            </div>
+        `;
+    }
+
+    // 2. Alert Shell
+    const alerts = document.getElementById('alertStackPage');
+    if (alerts) {
+        alerts.innerHTML = `
+            <div class="view-header"><h2>Tactical <span>Alerts</span></h2></div>
+            <div id="alertContainer" class="card-grid"></div>
+        `;
+    }
+
+    // 3. Digital Twin Shell
+    renderDigitalTwinContent();
+
+    // 4. Analytics Shell
+    renderAnalyticsContent();
+
+    // 5. Diagnostics Shell
+    renderDiagnosticsContent();
+}
+
 function handleSidebarNav(pageId, sectionId, btnId) {
     showPage(pageId);
     
@@ -178,67 +229,63 @@ function handleSidebarNav(pageId, sectionId, btnId) {
  * PAGE COMPILATION
  */
 function populateAllPages() {
-    renderHomeContent();
-    renderDigitalTwinContent();
-    renderAlertStackContent();
-    renderAnalyticsContent();
+    updateHomeDynamic();
+    updateAlertStackDynamic();
 }
 
 /**
  * 1. MONITORING DASHBOARD (HOME)
  */
-function renderHomeContent() {
-    const m = machineData[0] || { machine_id: "N/A", temperature: 0, vibration: 0 };
-    const container = document.getElementById('homePage');
-    container.innerHTML = `
-        <div id="overview" class="view-header">
-            <div class="view-title">
-                <h2>Operational <span>Intelligence</span></h2>
-                <div class="view-subtitle">System Node: OSCAR-09 • Pulse Synchronized</div>
+function updateHomeDynamic() {
+    const riskContainer = document.getElementById('riskMatrix');
+    const machineContainer = document.getElementById('machineGrid');
+    if (!riskContainer || !machineContainer) return;
+
+    // Update Fleet Summaries
+    riskContainer.innerHTML = `
+        <div class="atlas-card status-ok">
+            <div class="m-card-header">
+                <span class="m-id">FLEET_STATUS</span>
+                <span class="m-tag">NOMINAL</span>
+            </div>
+            <div class="m-stats">
+                <div class="m-metric"><label>ACTIVE NODES</label><div class="val">${machineData.length}</div></div>
+                <div class="m-metric"><label>NETWORK LATENCY</label><div class="val">12<span>ms</span></div></div>
             </div>
         </div>
-
-        <div id="telemetry" class="telemetry-focus">
-            <div class="focus-header"><h3>LIVE TELEMETRY STREAM</h3></div>
-            <div class="big-chart-wrap"><canvas id="home-telemetry-chart"></canvas></div>
-        </div>
-
-        <div id="riskMatrix" class="card-grid">
-            <div class="atlas-card status-ok">
-                <div class="m-card-header">
-                    <span class="m-id">FLEET_STATUS</span>
-                    <span class="m-tag">NOMINAL</span>
-                </div>
-                <div class="m-stats">
-                    <div class="m-metric">
-                        <label>ACTIVE NODES</label>
-                        <div class="val">${machineData.length}</div>
-                    </div>
-                    <div class="m-metric">
-                        <label>NETWORK LATENCY</label>
-                        <div class="val">12<span>ms</span></div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="atlas-card status-warn">
-                <div class="m-card-header">
-                    <span class="m-id">PREDICTIVE_LOAD</span>
-                    <span class="m-tag">BALANCE</span>
-                </div>
-                <div class="m-stats">
-                    <div class="m-metric">
-                        <label>THROUGHPUT</label>
-                        <div class="val">94<span>%</span></div>
-                    </div>
-                    <div class="m-metric">
-                        <label>UPTIME</label>
-                        <div class="val">99.9<span>%</span></div>
-                    </div>
-                </div>
+        <div class="atlas-card status-warn">
+            <div class="m-card-header"><span class="m-id">PREDICTIVE_LOAD</span><span class="m-tag">BALANCE</span></div>
+            <div class="m-stats">
+                <div class="m-metric"><label>THROUGHPUT</label><div class="val">94<span>%</span></div></div>
+                <div class="m-metric"><label>UPTIME</label><div class="val">99.9<span>%</span></div></div>
             </div>
         </div>
     `;
+
+    // Render Machine Grid (Actual Machines)
+    const STATUS_MAP = {
+        'LOW': { label: 'NOMINAL', class: 'status-ok' },
+        'MEDIUM': { label: 'WARNING', class: 'status-warn' },
+        'HIGH': { label: 'CRITICAL', class: 'status-critical' }
+    };
+
+    machineContainer.innerHTML = machineData.map(m => {
+        const s = STATUS_MAP[m.risk] || STATUS_MAP['LOW'];
+        return `
+            <div class="atlas-card ${s.class}">
+                <div class="m-card-header"><span class="m-id">${m.machine_id}</span><span class="m-tag">${s.label}</span></div>
+                <div class="m-stats">
+                    <div class="m-metric"><label>TMP</label><div class="val">${m.temperature.toFixed(1)}°</div></div>
+                    <div class="m-metric"><label>VIB</label><div class="val">${m.vibration.toFixed(2)}</div></div>
+                    <div class="m-metric"><label>RPM</label><div class="val">${Math.round(m.rpm)}</div></div>
+                </div>
+                <div class="m-explanation" style="margin-top: 1rem; font-size: 0.75rem; color: var(--text-muted); line-height: 1.4;">
+                    ${m.explanation}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
 }
 
 /**
@@ -341,23 +388,23 @@ function renderDTModules(machines) {
 /**
  * 3. ALERT STACK
  */
-function renderAlertStackContent() {
-    const container = document.getElementById('alertStackPage');
-    container.innerHTML = `
-        <div class="view-header"><h2>Tactical <span>Alerts</span></h2></div>
-        <div class="card-grid">
-            <div class="atlas-card status-critical">
-                <div class="m-card-header">
-                    <span class="m-id">ALRT-901</span>
-                    <span class="m-tag">CRITICAL</span>
-                </div>
-                <p style="font-size: 0.85rem; line-height: 1.6; margin-bottom: 1.5rem;">
-                    Thermal Runaway protection triggered on Node-09. Cooling flow below baseline.
-                </p>
-                <button class="action-btn primary" onclick="alert('Work Order Triggered')">TRIGGER REMEDIATION</button>
-            </div>
+function updateAlertStackDynamic() {
+    const container = document.getElementById('alertContainer');
+    if (!container) return;
+
+    const criticals = machineData.filter(m => m.risk === 'HIGH');
+    if (criticals.length === 0) {
+        container.innerHTML = `<div class="atlas-card" style="opacity: 0.5;"><p>No tactical alerts in stack. All nodes nominal.</p></div>`;
+        return;
+    }
+
+    container.innerHTML = criticals.map(m => `
+        <div class="atlas-card status-critical">
+            <div class="m-card-header"><span class="m-id">ALRT-${m.machine_id}</span><span class="m-tag">CRITICAL</span></div>
+            <p style="font-size: 0.85rem; line-height: 1.6; margin-bottom: 1.5rem;">${m.explanation}</p>
+            <button class="action-btn primary" onclick="alert('Work Order Triggered for ${m.machine_id}')">TRIGGER REMEDIATION</button>
         </div>
-    `;
+    `).join('');
 }
 
 function renderAnalyticsContent() {
