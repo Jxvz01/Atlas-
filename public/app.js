@@ -325,7 +325,6 @@ function updateHomeDynamic() {
         `;
     }).join('');
 }
-}
 
 /**
  * 2. DIGITAL TWIN (SIMULATION)
