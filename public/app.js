@@ -268,8 +268,7 @@ function handleSidebarNav(pageId, sectionId, btnId) {
  * PAGE COMPILATION
  */
 function populateAllPages() {
-    updateHomeDynamic();
-    updateAlertStackDynamic();
+    // Dynamic updates handled by the central loop in connectToSensorStreams
 }
 
 /**
@@ -348,33 +347,18 @@ function renderDigitalTwinContent() {
 }
 
 async function startDigitalTwin() {
-    const container = document.getElementById('digitalTwinContainer');
-    if (!container || dtInterval) return;
-
-    const fetchDT = async () => {
-        try {
-            const response = await fetch('/api/machines');
-            const data = await response.json();
-            renderDTModules(data.machines);
-        } catch (e) {
-            container.innerHTML = `<p class="dt-error">Simulation link offline</p>`;
-        }
-    };
-
-    fetchDT();
-    dtInterval = setInterval(fetchDT, 2000);
+    // Digital Twin now uses the central real-time state from SSE
+    console.log("🔗 Digital Twin Synchronized with SSE Stream.");
+    updateDigitalTwinDynamic();
 }
 
 function stopDigitalTwin() {
-    if (dtInterval) {
-        clearInterval(dtInterval);
-        dtInterval = null;
-    }
+    // No-op as it now uses the global state loop
 }
 
-function renderDTModules(machines) {
+function updateDigitalTwinDynamic() {
     const container = document.getElementById('digitalTwinContainer');
-    if (!container) return;
+    if (!container || !machineData.length) return;
 
     const STATUS_MAP = {
         'LOW': { label: 'NOMINAL', icon: '◎', class: 'status-ok' },
@@ -382,7 +366,7 @@ function renderDTModules(machines) {
         'HIGH': { label: 'THERMAL_RUNAWAY', icon: '!', class: 'status-critical' }
     };
 
-    const html = machines.map(m => {
+    const html = machineData.map(m => {
         const s = STATUS_MAP[m.risk] || STATUS_MAP['LOW'];
         return `
             <div class="atlas-card ${s.class}">
@@ -401,7 +385,7 @@ function renderDTModules(machines) {
                     </div>
                     <div class="m-metric">
                         <label>RPM</label>
-                        <div class="val">${m.rpm.toFixed(0)}</div>
+                        <div class="val">${Math.round(m.rpm)}</div>
                     </div>
                     <div class="m-metric">
                         <label>CURRENT</label>
@@ -409,10 +393,7 @@ function renderDTModules(machines) {
                     </div>
                 </div>
                 <div class="m-footer">
-                    <div class="m-risk">
-                        <label>RISK_ASSESSMENT</label>
-                        <div class="risk-val">${m.risk}</div>
-                    </div>
+                    <div class="m-risk"><label>HEALTH_INDEX</label><div class="risk-val">${m.risk}</div></div>
                     <div class="m-icon" style="font-size: 1.5rem; opacity: 0.3;">${s.icon}</div>
                 </div>
                 <div class="m-explanation">"${m.explanation}"</div>
@@ -495,13 +476,9 @@ function renderAnalyticsCharts() {
         const ctx = document.getElementById(id);
         if (!ctx) return;
 
-        // Destroy previous to avoid memory leaks
-        if (chartInstances[id]) chartInstances[id].destroy();
-
-        // Calculate Fleet Average of the metric
+        // Calculate Fleet Average
         const aggregateData = historyMap["CNC_01"][metrics[idx]].map((_, timeIdx) => {
-            let sum = 0;
-            let count = 0;
+            let sum = 0, count = 0;
             Object.values(historyMap).forEach(mHist => {
                 sum += mHist[metrics[idx]][timeIdx];
                 count++;
@@ -509,30 +486,36 @@ function renderAnalyticsCharts() {
             return sum / count;
         });
 
-        chartInstances[id] = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: Array(30).fill(''),
-                datasets: [{
-                    label: metrics[idx].toUpperCase(),
-                    data: aggregateData,
-                    borderColor: colors[idx],
-                    backgroundColor: colors[idx] + '10',
-                    borderWidth: 2,
-                    tension: 0.4,
-                    pointRadius: 0
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#666' } },
-                    x: { display: false }
+        if (chartInstances[id]) {
+            chartInstances[id].data.datasets[0].data = aggregateData;
+            chartInstances[id].update('none');
+        } else {
+            chartInstances[id] = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array(30).fill(''),
+                    datasets: [{
+                        label: metrics[idx].toUpperCase(),
+                        data: aggregateData,
+                        borderColor: colors[idx],
+                        backgroundColor: colors[idx] + '10',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        pointRadius: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#666' } },
+                        x: { display: false }
+                    }
                 }
-            }
-        });
+            });
+        }
     });
 }
 
@@ -614,15 +597,26 @@ function connectToSensorStreams() {
         eventSources[id] = es;
     });
 
-    // Start UI update loop (faster than SSE for smooth charts)
+    // Start UI update loop (centralized sync)
     setInterval(() => {
-        if (document.getElementById('homePage').style.display !== 'none') {
+        const homeVisible = document.getElementById('homePage').style.display !== 'none';
+        const analyticsVisible = document.getElementById('analyticsPage').style.display !== 'none';
+        const dtVisible = document.getElementById('digitalTwinPage').style.display !== 'none';
+
+        if (homeVisible) {
             renderHomeChart();
+            updateHomeDynamic();
         }
-        if (currentRole === 'ENGINEER' && document.getElementById('analyticsPage').style.display === 'block') {
+        
+        if (currentRole === 'ENGINEER' && analyticsVisible) {
             renderAnalyticsCharts();
         }
-        populateAllPages();
+
+        if (dtVisible) {
+            updateDigitalTwinDynamic();
+        }
+
+        updateAlertStackDynamic();
         renderInsights();
     }, 1000);
 }
