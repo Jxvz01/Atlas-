@@ -101,6 +101,30 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '../public/index.html'));
 });
 
+/**
+ * REQ: Auth Module (Added for Tactical Integration)
+ */
+app.post('/api/login', (req, res) => {
+    const { username, password } = req.body;
+    
+    // Role-based credentials for ATLAS+ Tactical Access
+    if (username === 'engineer' && password === 'eng123') {
+        res.json({ 
+            success: true, 
+            token: 'atlas_eng_mock_8812',
+            user: { role: 'ENGINEER', name: 'Field Engineer' }
+        });
+    } else if (username === 'technician' && password === 'tech123') {
+        res.json({ 
+            success: true, 
+            token: 'atlas_tech_mock_2291',
+            user: { role: 'TECHNICIAN', name: 'Maintenance Tech' }
+        });
+    } else {
+        res.status(401).json({ success: false, message: 'CRITICAL: ACCESS DENIED. NO SUCH ROLE FOUND.' });
+    }
+});
+
 app.listen(PORT, () => {
     console.log(`ATLAS+ Node Backend running at http://localhost:${PORT}`);
     console.log(`Serving static assets from ../public/`);

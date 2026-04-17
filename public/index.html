@@ -7,18 +7,44 @@
     <link rel="stylesheet" href="/static/style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <div class="app-container">
-        <!-- Sidebar Navigation -->
+    <!-- AUTHENTICATION LAYER -->
+    <div id="login-container" class="auth-wrapper">
+        <div class="auth-card">
+            <div class="auth-header">
+                <div class="brand">ATLAS<span>+</span></div>
+                <p>SECURE TERMINAL ACCESS</p>
+            </div>
+            <div class="auth-form" id="loginForm">
+                <div class="input-group">
+                    <label>OPERATOR_ID</label>
+                    <input type="text" id="username" placeholder="Enter ID..." required />
+                </div>
+                <div class="input-group">
+                    <label>ACCESS_KEY</label>
+                    <input type="password" id="password" placeholder="••••••••" required />
+                </div>
+                <div id="auth-error" class="auth-error"></div>
+                <button type="submit" class="auth-submit" onclick="handleLogin()">ACCESS PORTAL</button>
+            </div>
+            <div class="auth-footer">
+                <span>SYSTEM: READY</span>
+                <span>NODE: OSCAR-09</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="app-container" style="display: none;">
+        <!-- SIDEBAR NAVIGATION -->
         <aside class="side-nav">
             <div class="side-top">
-                <div class="brand">ATLAS <span>+</span></div>
+                <div class="brand">ATLAS<span>+</span></div>
                 <div class="sentinel-tag">
-                    <div class="sentinel-icon">🛡️</div>
-                    <div>
+                    <span class="sentinel-icon">🛡️</span>
+                    <div class="s-info">
                         <div class="s-ver">SENTINEL V2.4</div>
                         <div class="s-node">NODE: OSCAR-09</div>
                     </div>
@@ -26,33 +52,25 @@
             </div>
 
             <nav class="nav-menu">
-                <a href="#" id="overviewBtn" class="nav-item"><span>OVERVIEW</span></a>
-                <a href="#" id="telemetryBtn" class="nav-item active"><span>TELEMETRY</span></a>
-                <a href="#" id="riskMatrixBtn" class="nav-item"><span>RISK MATRIX</span></a>
-                <a href="#" id="aiInsightsBtn" class="nav-item"><span>AI INSIGHTS</span></a>
-                <a href="#" id="systemLogBtn" class="nav-item"><span>SYSTEM LOG</span></a>
+                <a href="#" class="nav-item active" id="overviewBtn">OVERVIEW</a>
+                <a href="#" class="nav-item" id="telemetryBtn">TELEMETRY</a>
+                <a href="#" class="nav-item" id="riskBtn">RISK MATRIX</a>
             </nav>
 
             <button class="emergency-btn">EMERGENCY STOP</button>
         </aside>
 
-        <!-- Main Workspace -->
-        <div class="main-wrapper">
+        <!-- MAIN WORKSPACE -->
+        <main class="main-wrapper">
             <header class="top-bar">
-                <div class="view-links">
+                <nav class="view-links">
                     <a href="#" id="homeTab" class="active" onclick="showPage('homePage')">Home</a>
                     <a href="#" id="digitalTab" onclick="showPage('digitalTwinPage')">Digital Twin</a>
                     <a href="#" id="alertsTab" onclick="showPage('alertStackPage')">Alert Stack</a>
                     <a href="#" id="analyticsTab" onclick="showPage('analyticsPage')">Analytics</a>
-                    <a href="#" id="diagnosticsTab" onclick="showPage('diagnosticsPage')">Diagnostics</a>
-                </div>
-                
+                </nav>
+
                 <div class="top-actions">
-                    <div class="search-box">
-                        <input type="text" placeholder="Search parameters...">
-                    </div>
-                    
-                    <!-- Role-Based Profile Module -->
                     <div class="profile-module">
                         <div class="profile-info">
                             <span class="role-label" id="roleIndicator">ENGINEER</span>
@@ -60,64 +78,46 @@
                         </div>
                         <div class="user-avatar"></div>
                     </div>
-
-                    <div class="icon-btn">⚙️</div>
+                    <button class="logout-btn" onclick="handleLogout()">LOGOUT</button>
+                    <span class="icon-btn">⚙️</span>
                 </div>
             </header>
 
-            <main class="dashboard-grid">
-                <!-- Content Area -->
-                <section class="viewport-content" id="main-content">
-                    <!-- Home Page (Monitoring Dashboard) -->
-                    <div id="homePage" class="page"></div>
+            <div class="dashboard-grid">
+                <!-- VIEWPORT ENGINE -->
+                <div class="viewport-content" id="viewport">
+                    <section id="homePage" class="page"></section>
+                    <section id="digitalTwinPage" class="page" style="display: none;"></section>
+                    <section id="alertStackPage" class="page" style="display: none;"></section>
+                    <section id="analyticsPage" class="page" style="display: none;"></section>
+                    <section id="diagnosticsPage" class="page" style="display: none;"></section>
+                </div>
 
-                    <!-- Digital Twin Page (Integration Container) -->
-                    <div id="digitalTwinPage" class="page" style="display: none;"></div>
-                    
-                    <div id="alertStackPage" class="page" style="display: none;"></div>
-                    <div id="analyticsPage" class="page" style="display: none;"></div>
-                    <div id="diagnosticsPage" class="page" style="display: none;"></div>
-                </section>
-
-                <!-- Insights Sidebar -->
+                <!-- AI INSIGHTS SIDEBAR -->
                 <aside class="insight-sidebar">
-                    <div class="insight-header">
+                    <div class="ai-header">
                         <span class="ai-icon">🧠</span>
-                        <div>
+                        <div class="ai-title">
                             <h3>AI INSIGHTS</h3>
-                            <p>Explainable AI Core Active</p>
+                            <p>Predictive Engine Active</p>
                         </div>
                     </div>
 
-                    <div id="insight-feed" class="insight-feed">
-                        <!-- Alert cards injected here -->
+                    <div class="insight-feed" id="insight-feed">
+                        <!-- Dynamic Insights -->
                     </div>
 
-                    <div class="live-feed">
-                        <div class="feed-img" id="machine-node-view">
-                            <!-- Visual placeholder or image -->
-                             <span>LIVE FEED: NODE-09</span>
-                        </div>
-                    </div>
-
-                    <div class="system-health-panel">
-                        <div class="health-meta">
-                            <span>SYSTEM HEALTH</span>
-                            <span class="health-status">OPTIMAL</span>
-                        </div>
-                        <div class="health-steps">
-                            <div class="step active"></div>
-                            <div class="step active"></div>
-                            <div class="step active"></div>
-                            <div class="step active"></div>
-                            <div class="step"></div>
+                    <div class="live-feed-wrap">
+                        <div class="live-feed">
+                            <span>LIVE FEED: NODE-09 SYSTEM OVERWATCH</span>
                         </div>
                     </div>
                 </aside>
-            </main>
-        </div>
+            </div>
+        </main>
     </div>
 
-    <script src="/static/app.js?v=3.2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/static/app.js?v=4.0"></script>
 </body>
 </html>
