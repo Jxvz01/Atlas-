@@ -592,20 +592,26 @@ body {
 .call-to-action.secondary { background: var(--bg-surface-high); color: white; }
 
 /* --- DIGITAL TWIN SIMULATION MODULE --- */
-.dt-grid-container {
-    padding: 2rem;
-    height: calc(100vh - 8rem);
-    overflow-y: auto;
-    overflow-x: hidden;
-    /* REQ: Hide scrollbar */
+#digitalTwinPage,
+.dt-grid-container,
+.dt-grid-container * {
     -ms-overflow-style: none !important;
     scrollbar-width: none !important;
 }
 
-.dt-grid-container::-webkit-scrollbar {
+#digitalTwinPage::-webkit-scrollbar,
+.dt-grid-container::-webkit-scrollbar,
+.dt-grid-container *::-webkit-scrollbar {
     display: none !important;
     width: 0 !important;
     height: 0 !important;
+}
+
+.dt-grid-container {
+    padding: 2rem;
+    height: calc(100vh - 10rem);
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 .dt-simulation-grid {
