@@ -118,13 +118,20 @@ function showPage(pageId) {
     else stopDigitalTwin();
 }
 
-function handleSidebarScroll(targetId, btnId) {
-    const target = document.getElementById(targetId);
-    if (target) {
-        target.scrollIntoView({ behavior: 'smooth' });
+function handleSidebarNav(pageId, sectionId, btnId) {
+    showPage(pageId);
+    
+    // Allow for DOM update before scrolling
+    setTimeout(() => {
+        const target = document.getElementById(sectionId);
+        if (target) {
+            target.scrollIntoView({ behavior: 'smooth' });
+        }
+        
         document.querySelectorAll('.nav-menu .nav-item').forEach(item => item.classList.remove('active'));
-        document.getElementById(btnId).classList.add('active');
-    }
+        const activeBtn = document.getElementById(btnId);
+        if (activeBtn) activeBtn.classList.add('active');
+    }, 100);
 }
 
 /**
@@ -315,7 +322,52 @@ function renderAlertStackContent() {
 
 function renderAnalyticsContent() {
     const container = document.getElementById('analyticsPage');
-    container.innerHTML = `<div class="view-header"><h2>Predictive <span>Analytics</span></h2></div>`;
+    container.innerHTML = `
+        <div class="view-header">
+            <div class="view-title">
+                <h2>Predictive <span>Analytics</span></h2>
+                <div class="view-subtitle">Fleet-Wide Health Trends • Neural Baseline: Alpha-7</div>
+            </div>
+        </div>
+        <div class="card-grid">
+            <div class="atlas-card">
+                <div class="m-card-header"><h4>RELIABILITY SCORE</h4></div>
+                <div style="font-size: 2.5rem; font-weight: 800; color: var(--status-ok)">98.4<span style="font-size: 1rem">%</span></div>
+                <p style="color: var(--text-muted); font-size: 0.75rem; margin-top: 1rem;">Operating 14.2% above historical quarter baseline.</p>
+            </div>
+            <div class="atlas-card">
+                <div class="m-card-header"><h4>DOWNTIME PREVENTED</h4></div>
+                <div style="font-size: 2.5rem; font-weight: 800; color: var(--accent-cyan)">142<span style="font-size: 1rem">HRS</span></div>
+                <p style="color: var(--text-muted); font-size: 0.75rem; margin-top: 1rem;">Calculated based on detected pre-failure trends.</p>
+            </div>
+        </div>
+        <div class="telemetry-focus" style="margin-top: 2rem;">
+            <div class="focus-header"><h3>FLEET PERFORMANCE TRENDS (7D)</h3></div>
+            <div style="height: 300px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                <p style="color: var(--text-muted); font-family: var(--font-header); letter-spacing: 2px;">ENCRYPTED TREND DATA STREAM active...</p>
+            </div>
+        </div>
+    `;
+}
+
+function renderDiagnosticsContent() {
+    const container = document.getElementById('diagnosticsPage');
+    container.innerHTML = `
+        <div class="view-header">
+            <div class="view-title">
+                <h2>System <span>Diagnostics</span></h2>
+                <div class="view-subtitle">Deep Inspection Mode • Secure Node: OSCAR-09</div>
+            </div>
+        </div>
+        <div class="atlas-card status-warn" style="max-width: 600px;">
+            <div class="m-card-header"><h4>MANUAL SYNC OVERRIDE</h4></div>
+            <p style="margin-bottom: 1.5rem;">Force a hardware-level diagnostic sync on all active nodes. This will bypass standard polling cycles.</p>
+            <div style="display: flex; gap: 1rem;">
+                <button class="action-btn primary" onclick="alert('Initiating Core Sync...')">FORCE SYNC</button>
+                <button class="action-btn secondary" onclick="alert('Clearing Neural Cache...')">CLEAR CACHE</button>
+            </div>
+        </div>
+    `;
 }
 
 function renderInsights() {
@@ -423,7 +475,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+function simulateAnomaly() {
+    document.body.classList.toggle('emergency-halt');
+    const msg = document.body.classList.contains('emergency-halt') ? "STRESS TEST ACTIVE" : "SYSTEM RESTORED";
+    console.log(msg);
+    if (document.body.classList.contains('emergency-halt')) {
+        alert("SIMULATING FLEET-WIDE CRITICAL STRESS...");
+    }
+}
+
 window.showPage = showPage;
-window.handleSidebarScroll = handleSidebarScroll;
-window.handleLogin = handleLogin;
+window.handleSidebarNav = handleSidebarNav;
 window.handleLogout = handleLogout;
+window.simulateAnomaly = simulateAnomaly;
+window.handleLogin = handleLogin;

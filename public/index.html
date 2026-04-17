@@ -52,9 +52,10 @@
             </div>
 
             <nav class="nav-menu">
-                <a href="#" class="nav-item active" id="overviewBtn">OVERVIEW</a>
-                <a href="#" class="nav-item" id="telemetryBtn">TELEMETRY</a>
-                <a href="#" class="nav-item" id="riskBtn">RISK MATRIX</a>
+                <a href="#" class="nav-item active" id="overviewBtn" onclick="handleSidebarNav('homePage', 'overview', 'overviewBtn')">OVERVIEW</a>
+                <a href="#" class="nav-item" id="telemetryBtn" onclick="handleSidebarNav('homePage', 'telemetry', 'telemetryBtn')">TELEMETRY</a>
+                <a href="#" class="nav-item" id="riskBtn" onclick="handleSidebarNav('homePage', 'riskMatrix', 'riskBtn')">RISK MATRIX</a>
+                <a href="#" class="nav-item" id="diagBtn" onclick="showPage('diagnosticsPage')">DIAGNOSTICS</a>
             </nav>
 
             <button class="emergency-btn">EMERGENCY STOP</button>
@@ -71,6 +72,7 @@
                 </nav>
 
                 <div class="top-actions">
+                    <button class="action-btn secondary simulate-btn" onclick="simulateAnomaly()" title="Simulate Stress Test">SIMULATE STRESS</button>
                     <div class="profile-module">
                         <div class="profile-info">
                             <span class="role-label" id="roleIndicator">ENGINEER</span>
@@ -78,7 +80,7 @@
                         <div class="user-avatar"></div>
                     </div>
                     <button class="logout-btn" onclick="handleLogout()">LOGOUT</button>
-                    <span class="icon-btn">⚙️</span>
+                    <span class="icon-btn" title="System Settings">⚙️</span>
                 </div>
             </header>
 
