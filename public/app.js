@@ -29,7 +29,9 @@ async function init() {
         machineData.forEach(m => {
             historyMap[m.machine_id] = {
                 temp: Array(30).fill(m.temperature),
-                vib: Array(30).fill(m.vibration)
+                vib: Array(30).fill(m.vibration),
+                rpm: Array(30).fill(m.rpm),
+                curr: Array(30).fill(m.current)
             };
         });
 
@@ -265,6 +267,14 @@ function renderDTModules(machines) {
                         <label>VIBRATION</label>
                         <div class="val">${m.vibration.toFixed(2)}<span>mm/s</span></div>
                     </div>
+                    <div class="m-metric">
+                        <label>RPM</label>
+                        <div class="val">${m.rpm.toFixed(0)}</div>
+                    </div>
+                    <div class="m-metric">
+                        <label>CURRENT</label>
+                        <div class="val">${m.current.toFixed(1)}<span>A</span></div>
+                    </div>
                 </div>
                 <div class="m-footer">
                     <div class="m-risk">
@@ -337,8 +347,16 @@ function startGlobalSimulation() {
             machineData.forEach(m => {
                 const h = historyMap[m.machine_id];
                 if (h) {
-                    h.temp.push(m.temperature); h.vib.push(m.vibration);
-                    if (h.temp.length > 30) { h.temp.shift(); h.vib.shift(); }
+                    h.temp.push(m.temperature); 
+                    h.vib.push(m.vibration);
+                    h.rpm.push(m.rpm);
+                    h.curr.push(m.current);
+                    if (h.temp.length > 30) { 
+                        h.temp.shift(); 
+                        h.vib.shift(); 
+                        h.rpm.shift(); 
+                        h.curr.shift(); 
+                    }
                 }
             });
             
