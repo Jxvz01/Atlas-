@@ -11,12 +11,40 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <!-- AUTHENTICATION LAYER -->
-    <div id="login-container" class="auth-wrapper">
+    <!-- 1. ENTRY PORTAL (High-Fidelity) -->
+    <div id="welcomeScreen" class="entry-portal">
+        <div class="portal-content">
+            <div class="portal-header">
+                <h1 class="portal-title">ATLAS<span>+</span></h1>
+                <p class="portal-subtitle">AI-POWERED PREDICTIVE MAINTENANCE SYSTEM</p>
+            </div>
+            
+            <div class="role-selection">
+                <button class="role-card" onclick="selectRole('ENGINEER')">
+                    <div class="role-icon">⚙️</div>
+                    <div class="role-name">ENGINEER MODE</div>
+                    <div class="role-desc">Advanced Analytics & Asset Config</div>
+                </button>
+                <button class="role-card" onclick="selectRole('TECHNICIAN')">
+                    <div class="role-icon">🔧</div>
+                    <div class="role-name">TECHNICIAN MODE</div>
+                    <div class="role-desc">Live Telemetry & Field Diagnostics</div>
+                </button>
+            </div>
+
+            <div class="portal-footer">
+                <span class="pulse-dot"></span>
+                <span class="status-msg">SYSTEM ACTIVE • REAL-TIME MONITORING</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. LOGIN OVERLAY (Hidden initially) -->
+    <div id="login-container" class="auth-wrapper" style="display: none;">
         <div class="auth-card">
             <div class="auth-header">
-                <div class="brand">ATLAS<span>+</span></div>
-                <p>SECURE TERMINAL ACCESS</p>
+                <h2 id="loginTitle">ROLE AUTHENTICATION</h2>
+                <button class="back-btn" onclick="goBackToWelcome()">← BACK</button>
             </div>
             <div class="auth-form" id="loginForm">
                 <div class="input-group">

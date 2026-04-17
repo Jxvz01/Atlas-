@@ -9,24 +9,23 @@ app.use(cors());
 app.use(express.json());
 
 // REQ: Static assets serving
+app.use(express.static(path.join(__dirname, '../public')));
 app.use('/static', express.static(path.join(__dirname, '../public')));
 
 // Persistent state for Predictive Decision Engine
 const machineState = {
     "CNC_01": { consecutiveHigh: 0, consecutiveMedium: 0, rpmBaseline: 1500, rpmHistory: [], currentHistory: [] },
     "CNC_02": { consecutiveHigh: 0, consecutiveMedium: 0, rpmBaseline: 1800, rpmHistory: [], currentHistory: [] },
-    "CNC_03": { consecutiveHigh: 0, consecutiveMedium: 0, rpmBaseline: 1200, rpmHistory: [], currentHistory: [] },
-    "CNC_04": { consecutiveHigh: 0, consecutiveMedium: 0, rpmBaseline: 2200, rpmHistory: [], currentHistory: [] },
-    "CNC_05": { consecutiveHigh: 0, consecutiveMedium: 0, rpmBaseline: 2000, rpmHistory: [], currentHistory: [] }
+    "PUMP_03": { consecutiveHigh: 0, consecutiveMedium: 0, rpmBaseline: 3000, rpmHistory: [], currentHistory: [] },
+    "CONVEYOR_04": { consecutiveHigh: 0, consecutiveMedium: 0, rpmBaseline: 800, rpmHistory: [], currentHistory: [] }
 };
 
 // Base Data with expanded signals
 const BASE_MACHINES = [
     { machine_id: "CNC_01", temperature: 45, vibration: 0.8, rpm: 1500, current: 8.5 },
     { machine_id: "CNC_02", temperature: 52, vibration: 1.2, rpm: 1800, current: 12.0 },
-    { machine_id: "CNC_03", temperature: 48, vibration: 0.9, rpm: 1200, current: 7.2 },
-    { machine_id: "CNC_04", temperature: 40, vibration: 0.5, rpm: 2200, current: 15.4 },
-    { machine_id: "CNC_05", temperature: 55, vibration: 1.5, rpm: 2000, current: 10.8 }
+    { machine_id: "PUMP_03", temperature: 48, vibration: 0.9, rpm: 3000, current: 7.2 },
+    { machine_id: "CONVEYOR_04", temperature: 40, vibration: 0.5, rpm: 800, current: 15.4 }
 ];
 
 /**

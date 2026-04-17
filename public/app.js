@@ -20,29 +20,29 @@ async function init() {
     const token = localStorage.getItem('atlas_token');
     const user = JSON.parse(localStorage.getItem('atlas_user') || '{}');
     
+    // 1. Initial State: Show Welcome Screen if not logged in
     if (!token) {
-        document.getElementById('login-container').style.display = 'flex';
+        document.getElementById('welcomeScreen').style.display = 'flex';
+        document.getElementById('login-container').style.display = 'none';
         document.querySelector('.app-container').style.display = 'none';
         return;
     }
 
+    // 2. Auth Success State: Setup Dashboard
     currentRole = user.role || "ENGINEER";
     const roleIndicator = document.getElementById('roleIndicator');
     if (roleIndicator) roleIndicator.textContent = currentRole;
 
     renderRoleUI();
 
-    // Initialize History Map with empty buckets for external machines
+    // 3. Data Initialization
     ["CNC_01", "CNC_02", "PUMP_03", "CONVEYOR_04"].forEach(id => {
         historyMap[id] = {
-            temp: Array(30).fill(0),
-            vib: Array(30).fill(0),
-            rpm: Array(30).fill(0),
-            curr: Array(30).fill(0)
+            temp: Array(30).fill(0), vib: Array(30).fill(0),
+            rpm: Array(30).fill(0), curr: Array(30).fill(0)
         };
     });
 
-    // Initialize Machine Data if empty to prevent grid flickering
     if (machineData.length === 0) {
         machineData = ["CNC_01", "CNC_02", "PUMP_03", "CONVEYOR_04"].map(id => ({
             machine_id: id, temperature: 0, vibration: 0, rpm: 0, current: 0, 
@@ -50,9 +50,46 @@ async function init() {
         }));
     }
 
+    // 4. UI Transition
     populateStaticShells();
+    document.getElementById('welcomeScreen').style.display = 'none';
+    document.getElementById('login-container').style.display = 'none';
+    document.querySelector('.app-container').style.display = 'flex';
+
     connectToSensorStreams();
     showPage('homePage');
+}
+
+/**
+ * ENTRY PORTAL LOGIC
+ */
+function selectRole(role) {
+    const loginContainer = document.getElementById('login-container');
+    const welcomeScreen = document.getElementById('welcomeScreen');
+    const loginTitle = document.getElementById('loginTitle');
+    
+    welcomeScreen.style.display = 'none';
+    loginContainer.style.display = 'flex';
+    loginTitle.textContent = `${role} AUTHENTICATION`;
+    
+    // Pre-fill username for convenience (as per user role locking)
+    document.getElementById('username').value = role.toLowerCase();
+    
+    const passField = document.getElementById('password');
+    if (passField) {
+        passField.value = "";
+        passField.focus();
+        
+        // Add Enter Key Support
+        passField.onkeyup = (e) => {
+            if (e.key === "Enter") handleLogin();
+        };
+    }
+}
+
+function goBackToWelcome() {
+    document.getElementById('login-container').style.display = 'none';
+    document.getElementById('welcomeScreen').style.display = 'flex';
 }
 
 /**
@@ -78,12 +115,14 @@ async function handleLogin() {
         const data = await response.json();
 
         if (data.success) {
+            console.log("✅ AUTHENTICATION SUCCESSFUL. OPERATIONAL ACCESS GRANTED.");
             localStorage.setItem('atlas_token', data.token);
             localStorage.setItem('atlas_user', JSON.stringify(data.user));
             currentRole = data.user.role;
             const roleIndicator = document.getElementById('roleIndicator');
             if (roleIndicator) roleIndicator.textContent = currentRole;
             
+            console.log("🛰️ TRANSITIONING TO DASHBOARD...");
             renderRoleUI();
             init();
         } else {
@@ -542,6 +581,7 @@ function renderInsights() {
  */
 function connectToSensorStreams() {
     const ids = ["CNC_01", "CNC_02", "PUMP_03", "CONVEYOR_04"];
+    console.log("📡 SYNCING SENSOR DATA STREAMS [SSE]...");
     
     ids.forEach(id => {
         if (eventSources[id]) eventSources[id].close();
@@ -717,3 +757,5 @@ window.showPage = showPage;
 window.handleSidebarNav = handleSidebarNav;
 window.handleLogout = handleLogout;
 window.handleLogin = handleLogin;
+window.selectRole = selectRole;
+window.goBackToWelcome = goBackToWelcome;
