@@ -50,27 +50,36 @@
                     <div class="search-box">
                         <input type="text" placeholder="Search parameters...">
                     </div>
-                    <div class="icon-btn">🔔</div>
+                    
+                    <!-- Role-Based Profile Module -->
+                    <div class="profile-module">
+                        <div class="profile-info">
+                            <span class="role-label" id="roleIndicator">ENGINEER</span>
+                            <button class="role-switch-btn" onclick="switchRole()">SWITCH ROLE</button>
+                        </div>
+                        <div class="user-avatar"></div>
+                    </div>
+
                     <div class="icon-btn">⚙️</div>
-                    <div class="user-avatar"></div>
                 </div>
             </header>
 
             <main class="dashboard-grid">
                 <!-- Content Area -->
                 <section class="viewport-content" id="main-content">
-                    <div id="digitalTwinPage" class="page">
-                        <!-- Digital Twin Content -->
+                    <!-- ENGINEER VIEWPORT -->
+                    <div id="engineerDashboard">
+                        <div id="digitalTwinPage" class="page"></div>
+                        <div id="analyticsPage" class="page" style="display: none;"></div>
                     </div>
-                    <div id="alertStackPage" class="page" style="display: none;">
-                        <!-- Alert Stack Content -->
+
+                    <!-- TECHNICIAN VIEWPORT -->
+                    <div id="technicianDashboard" style="display: none;">
+                        <div id="alertStackPage" class="page"></div>
                     </div>
-                    <div id="analyticsPage" class="page" style="display: none;">
-                        <!-- Analytics Content -->
-                    </div>
-                    <div id="diagnosticsPage" class="page" style="display: none;">
-                        <!-- Diagnostics Content -->
-                    </div>
+
+                    <!-- SHARED VIEWPORT -->
+                    <div id="diagnosticsPage" class="page" style="display: none;"></div>
                 </section>
 
                 <!-- Insights Sidebar -->

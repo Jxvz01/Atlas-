@@ -1,25 +1,43 @@
-/* Emergency States */
-body.emergency-halt {
-    filter: saturate(0) contrast(1.2);
-    pointer-events: none !important;
+/* Profile & Role Module */
+.profile-module {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: rgba(255, 255, 255, 0.02);
+    padding: 0.4rem 1rem;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-body.emergency-halt::after {
-    content: 'CRITICAL HALT';
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: rgba(255, 77, 77, 0.9);
-    color: white;
-    padding: 2rem 4rem;
-    font-family: var(--font-header);
-    font-weight: 800;
-    font-size: 3rem;
-    z-index: 9999;
-    border-radius: 8px;
-    box-shadow: 0 0 50px rgba(0,0,0,0.5);
+.profile-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
 }
+
+.role-label {
+    font-size: 0.6rem;
+    font-weight: 800;
+    color: var(--accent-cyan);
+    letter-spacing: 0.1em;
+}
+
+.role-switch-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 0.55rem;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 0;
+    margin-top: 2px;
+}
+
+.role-switch-btn:hover {
+    color: white;
+    text-decoration: underline;
+}
+
 :root {
     --bg-darker: #0d0d0f;
     --bg-dark: #131315;
