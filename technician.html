@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Technician Dashboard | ATLAS+</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        .dashboard-content {
+            text-align: center;
+            padding: 40px;
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            max-width: 800px;
+            width: 90%;
+            z-index: 2;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            background: rgba(59, 130, 246, 0.2);
+            color: var(--primary);
+            border-radius: 20px;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        .maintenance-list {
+            margin-top: 40px;
+            text-align: left;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .task-item {
+            background: var(--input-bg);
+            padding: 16px;
+            border-radius: 12px;
+            border-left: 4px solid var(--primary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .task-item.priority {
+            border-left-color: #ef4444;
+        }
+        .logout-link {
+            display: inline-block;
+            margin-top: 30px;
+            color: var(--text-dim);
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .logout-link:hover {
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="background-overlay"></div>
+    <div class="dashboard-content">
+        <span class="status-badge">Active Shift</span>
+        <h1>Technician Portal</h1>
+        <p class="subtitle">Operations overview for the current sector.</p>
+        
+        <div class="maintenance-list">
+            <div class="task-item priority">
+                <span>Pressure Valve Calibration - Sector 7</span>
+                <span style="font-size: 12px; color: #ef4444;">Urgent</span>
+            </div>
+            <div class="task-item">
+                <span>Routine Filter Replacement - Block B</span>
+                <span style="font-size: 12px; color: var(--text-dim);">Due in 2h</span>
+            </div>
+            <div class="task-item">
+                <span>Coolant Level Inspection</span>
+                <span style="font-size: 12px; color: var(--text-dim);">Scheduled</span>
+            </div>
+        </div>
+        
+        <a href="index.html" class="logout-link">Sign Out</a>
+    </div>
+</body>
+</html>
