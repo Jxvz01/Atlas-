@@ -49,9 +49,6 @@ async function init() {
     connectToSensorStreams();
     showPage('homePage');
 }
-        console.error("Critical: Telemetry link failed", error);
-    }
-}
 
 /**
  * AUTHENTICATION LOGIC
