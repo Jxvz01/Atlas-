@@ -9,6 +9,12 @@
     --text-muted: #4b5563;
     --border-color: #21262d;
     --font-main: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    
+    /* Variables used in dashboards */
+    --primary: #00bcd4;
+    --secondary: #2dd4bf;
+    --border: #21262d;
+    --text-dim: #94a3b8;
 }
 
 * {
@@ -25,63 +31,64 @@ body {
     flex-direction: column;
     align-items: center;
     min-height: 100vh;
-    padding: 40px 20px;
+    padding: 60px 20px;
     overflow-x: hidden;
-    background: radial-gradient(circle at 50% 50%, #161b22 0%, #0b0d11 100%);
+    background: radial-gradient(circle at 50% 40%, #161b22 0%, #0b0d11 100%);
 }
 
 /* Background grid of dots from image */
 .dot-pattern {
     position: fixed;
-    top: 40px;
-    right: 40px;
-    width: 100px;
-    height: 100px;
-    background-image: radial-gradient(var(--text-muted) 1px, transparent 1px);
-    background-size: 15px 15px;
-    opacity: 0.3;
+    top: 60px;
+    right: 60px;
+    width: 120px;
+    height: 120px;
+    background-image: radial-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+    background-size: 20px 20px;
+    opacity: 0.5;
 }
 
 .page-header {
     text-align: center;
-    margin-bottom: 60px;
+    margin-bottom: 48px;
 }
 
 .brand-name {
-    font-size: 14px;
-    font-weight: 700;
-    letter-spacing: 2px;
-    margin-bottom: 8px;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 3px;
+    margin-bottom: 12px;
     color: var(--text-primary);
 }
 
 .main-title {
-    font-size: 16px;
-    font-weight: 500;
-    letter-spacing: 3px;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 4px;
     color: var(--text-secondary);
+    opacity: 0.8;
 }
 
 .auth-container {
     width: 100%;
-    max-width: 420px;
-    margin-bottom: 60px;
+    max-width: 440px;
+    margin-bottom: 48px;
 }
 
 .auth-card {
-    background-color: var(--card-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 28px;
-    padding: 48px 40px;
-    box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.5);
+    background-color: #1a1f26;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 32px;
+    padding: 56px 48px;
+    box-shadow: 0 40px 80px -20px rgba(0, 0, 0, 0.6);
 }
 
 .card-header {
-    margin-bottom: 32px;
+    margin-bottom: 40px;
 }
 
 .card-header h2 {
-    font-size: 20px;
+    font-size: 22px;
     font-weight: 600;
     margin-bottom: 8px;
 }
@@ -89,24 +96,25 @@ body {
 .card-header p {
     font-size: 14px;
     color: var(--text-secondary);
+    letter-spacing: 0.5px;
 }
 
 .auth-form {
     display: flex;
     flex-direction: column;
-    gap: 24px;
+    gap: 28px;
 }
 
 .input-container {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
 }
 
 .input-container label {
     font-size: 11px;
     font-weight: 700;
-    letter-spacing: 1px;
+    letter-spacing: 1.5px;
     color: var(--text-muted);
 }
 
@@ -118,55 +126,59 @@ body {
 
 .input-icon {
     position: absolute;
-    left: 16px;
+    left: 20px;
     color: var(--text-muted);
+    opacity: 0.7;
 }
 
 input, select {
     width: 100%;
-    background-color: var(--input-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 16px 16px 16px 48px;
+    background-color: #0b0d11;
+    border: 1.5px solid rgba(255, 255, 255, 0.03);
+    border-radius: 14px;
+    padding: 18px 18px 18px 54px;
     color: var(--text-primary);
     font-size: 15px;
     outline: none;
-    transition: all 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 select {
-    padding-left: 16px;
+    padding-left: 20px;
     cursor: pointer;
     appearance: none;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%234b5563' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'%3E%3C/path%3E%3C/svg%3E");
     background-repeat: no-repeat;
-    background-position: right 16px center;
+    background-position: right 20px center;
 }
 
 input:focus, select:focus {
-    border-color: var(--text-muted);
+    border-color: rgba(0, 188, 212, 0.3);
+    background-color: #0d1117;
+    box-shadow: 0 0 0 4px rgba(0, 188, 212, 0.05);
 }
 
 .auth-btn {
-    background: linear-gradient(to right, #00acc1, #00bcd4);
-    color: #0b0d11;
+    background: linear-gradient(135deg, #00bcd4 0%, #00acc1 100%);
+    color: #000;
     border: none;
-    border-radius: 30px;
-    padding: 18px;
+    border-radius: 40px;
+    padding: 20px;
     font-size: 14px;
-    font-weight: 700;
-    letter-spacing: 1px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
     cursor: pointer;
-    margin-top: 8px;
-    transition: all 0.3s ease;
-    box-shadow: 0 0 20px rgba(0, 188, 212, 0.2);
+    margin-top: 12px;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 8px 24px rgba(0, 188, 212, 0.3);
 }
 
 .auth-btn:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 0 30px var(--accent-cyan-glow);
-    filter: brightness(1.1);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px var(--accent-cyan-glow);
+    filter: brightness(1.05);
 }
+
 
 .report-link {
     text-align: center;
@@ -177,6 +189,134 @@ input:focus, select:focus {
     letter-spacing: 1px;
     margin-top: 10px;
 }
+
+/* Error Container */
+.error-container {
+    background-color: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+    padding: 12px;
+    border-radius: 12px;
+    font-size: 13px;
+    text-align: center;
+    margin-bottom: 8px;
+}
+
+/* Password Toggle */
+.toggle-password {
+    position: absolute;
+    right: 16px;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: color 0.2s ease;
+}
+
+.toggle-password:hover {
+    color: var(--text-secondary);
+}
+
+/* Checkbox Styles */
+.form-options {
+    margin-bottom: 8px;
+}
+
+.checkbox-container {
+    display: flex;
+    align-items: center;
+    position: relative;
+    padding-left: 28px;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+    user-select: none;
+}
+
+.checkbox-container input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+}
+
+.checkmark {
+    position: absolute;
+    top: -1px;
+    left: 0;
+    height: 18px;
+    width: 18px;
+    background-color: var(--input-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+}
+
+.checkbox-container:hover input ~ .checkmark {
+    border-color: var(--text-muted);
+}
+
+.checkbox-container input:checked ~ .checkmark {
+    background-color: var(--accent-cyan);
+    border-color: var(--accent-cyan);
+}
+
+.checkmark:after {
+    content: "";
+    position: absolute;
+    display: none;
+}
+
+.checkbox-container input:checked ~ .checkmark:after {
+    display: block;
+}
+
+.checkbox-container .checkmark:after {
+    left: 6px;
+    top: 2px;
+    width: 4px;
+    height: 8px;
+    border: solid #0b0d11;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+/* Auth Button & Spinner */
+.auth-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    position: relative;
+}
+
+.spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(11, 13, 17, 0.3);
+    border-top: 2px solid #0b0d11;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.auth-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
 
 .report-link:hover {
     color: var(--text-secondary);
@@ -221,6 +361,16 @@ input:focus, select:focus {
 
 .footer-links a:hover {
     color: var(--text-secondary);
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+.shake {
+    animation: shake 0.4s ease-in-out;
 }
 
 @media (max-width: 480px) {
