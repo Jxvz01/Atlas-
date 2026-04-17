@@ -1,0 +1,86 @@
+:root {
+  font-family: Inter, Segoe UI, Arial, sans-serif;
+  color: #0f172a;
+  background-color: #f8fafc;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+.dashboard {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1rem 3rem;
+}
+
+.dashboard-header h1 {
+  margin: 0;
+  font-size: 1.8rem;
+}
+
+.dashboard-header p {
+  margin-top: 0.5rem;
+  color: #475569;
+}
+
+.error-banner {
+  margin: 1rem 0;
+  padding: 0.75rem 1rem;
+  background: #fee2e2;
+  color: #991b1b;
+  border-radius: 0.5rem;
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+  margin-top: 1.2rem;
+}
+
+.machine-card {
+  background: #ffffff;
+  border-radius: 0.8rem;
+  border: 3px solid #16a34a;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+  padding: 1rem;
+}
+
+.machine-card h2 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  font-size: 1.1rem;
+}
+
+.machine-card p {
+  margin: 0.35rem 0;
+  color: #1f2937;
+  font-size: 0.95rem;
+}
+
+.machine-card span {
+  font-weight: 600;
+}
+
+.status-0 {
+  border-color: #16a34a;
+}
+
+.status-1 {
+  border-color: #eab308;
+}
+
+.status-2 {
+  border-color: #dc2626;
+}
+
+.dashboard-footer {
+  margin-top: 1.2rem;
+  color: #64748b;
+}
