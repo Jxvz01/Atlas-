@@ -21,6 +21,8 @@ async function init() {
     const roleIndicator = document.getElementById('roleIndicator');
     if (roleIndicator) roleIndicator.textContent = currentRole;
 
+    renderRoleUI();
+
     try {
         const response = await fetch('/api/machines');
         const data = await response.json();
@@ -74,6 +76,11 @@ async function handleLogin() {
         if (data.success) {
             localStorage.setItem('atlas_token', data.token);
             localStorage.setItem('atlas_user', JSON.stringify(data.user));
+            currentRole = data.user.role;
+            const roleIndicator = document.getElementById('roleIndicator');
+            if (roleIndicator) roleIndicator.textContent = currentRole;
+            
+            renderRoleUI();
             init();
         } else {
             errEl.textContent = data.message;
@@ -116,6 +123,36 @@ function showPage(pageId) {
 
     if (pageId === 'digitalTwinPage') startDigitalTwin();
     else stopDigitalTwin();
+}
+
+function renderRoleUI() {
+    const sidebar = document.getElementById('sidebarMenu');
+    const topNav = document.getElementById('topNav');
+    if (!sidebar || !topNav) return;
+
+    if (currentRole === 'ENGINEER') {
+        sidebar.innerHTML = `
+            <a href="#" class="nav-item active" id="overviewBtn" onclick="handleSidebarNav('homePage', 'overview', 'overviewBtn')">OVERVIEW</a>
+            <a href="#" class="nav-item" id="analBtn" onclick="showPage('analyticsPage')">ANALYTICS</a>
+            <a href="#" class="nav-item" id="riskBtn" onclick="handleSidebarNav('homePage', 'riskMatrix', 'riskBtn')">RISK MATRIX</a>
+        `;
+        topNav.innerHTML = `
+            <a href="#" class="active" id="homeTab" onclick="showPage('homePage')">HOME</a>
+            <a href="#" id="digitalTab" onclick="showPage('digitalTwinPage')">DIGITAL TWIN</a>
+            <a href="#" id="analyticsTab" onclick="showPage('analyticsPage')">ANALYTICS</a>
+        `;
+    } else {
+        sidebar.innerHTML = `
+            <a href="#" class="nav-item active" id="teleBtn" onclick="handleSidebarNav('homePage', 'telemetry', 'teleBtn')">TELEMETRY</a>
+            <a href="#" class="nav-item" id="diagBtn" onclick="showPage('diagnosticsPage')">DIAGNOSTICS</a>
+            <a href="#" class="nav-item" id="alertBtn" onclick="showPage('alertStackPage')">ALERT STACK</a>
+        `;
+        topNav.innerHTML = `
+            <a href="#" class="active" id="homeTab" onclick="showPage('homePage')">HOME</a>
+            <a href="#" id="digitalTab" onclick="showPage('digitalTwinPage')">DIGITAL TWIN</a>
+            <a href="#" id="alertsTab" onclick="showPage('alertStackPage')">ALERT STACK</a>
+        `;
+    }
 }
 
 function handleSidebarNav(pageId, sectionId, btnId) {

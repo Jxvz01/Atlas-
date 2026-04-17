@@ -51,11 +51,8 @@
                 </div>
             </div>
 
-            <nav class="nav-menu">
-                <a href="#" class="nav-item active" id="overviewBtn" onclick="handleSidebarNav('homePage', 'overview', 'overviewBtn')">OVERVIEW</a>
-                <a href="#" class="nav-item" id="telemetryBtn" onclick="handleSidebarNav('homePage', 'telemetry', 'telemetryBtn')">TELEMETRY</a>
-                <a href="#" class="nav-item" id="riskBtn" onclick="handleSidebarNav('homePage', 'riskMatrix', 'riskBtn')">RISK MATRIX</a>
-                <a href="#" class="nav-item" id="diagBtn" onclick="showPage('diagnosticsPage')">DIAGNOSTICS</a>
+            <nav class="nav-menu" id="sidebarMenu">
+                <!-- Dynamically rendered by role -->
             </nav>
 
             <button class="emergency-btn">EMERGENCY STOP</button>
@@ -64,11 +61,8 @@
         <!-- MAIN WORKSPACE -->
         <main class="main-wrapper">
             <header class="top-bar">
-                <nav class="view-links">
-                    <a href="#" id="homeTab" class="active" onclick="showPage('homePage')">Home</a>
-                    <a href="#" id="digitalTab" onclick="showPage('digitalTwinPage')">Digital Twin</a>
-                    <a href="#" id="alertsTab" onclick="showPage('alertStackPage')">Alert Stack</a>
-                    <a href="#" id="analyticsTab" onclick="showPage('analyticsPage')">Analytics</a>
+                <nav class="view-links" id="topNav">
+                    <!-- Dynamically rendered -->
                 </nav>
 
                 <div class="top-actions">
