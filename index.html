@@ -3,68 +3,103 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ATLAS+ | Industrial Portal</title>
+    <title>ATLAS+ | Tactical Intelligence Portal</title>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;700;800&family=Space+Grotesk:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <header>
-        <div class="brand">
-            <h1>ATLAS <span>+</span></h1>
-        </div>
-        
-        <div class="view-toggle-center">
-            <button id="engineerBtn" class="toggle-pill active" onclick="switchView('engineer')">ENGINEER</button>
-            <button id="technicianBtn" class="toggle-pill" onclick="switchView('technician')">TECHNICIAN</button>
-        </div>
-
-        <div class="role-display" id="role-tag">
-            ROLE: ENGINEER
-        </div>
-    </header>
-
-    <main>
-        <!-- Hero Section -->
-        <section class="hero-stats">
-            <div class="stat-card">
-                <div class="stat-label">Total Machines</div>
-                <div class="stat-value" id="stat-total">0</div>
-            </div>
-            <div class="stat-card" style="border-left: 2px solid var(--accent-red)">
-                <div class="stat-label">Critical Alerts</div>
-                <div class="stat-value" id="stat-critical" style="color: var(--accent-red)">0</div>
-            </div>
-            <div class="stat-card" style="border-left: 2px solid var(--accent-yellow)">
-                <div class="stat-label">System Health</div>
-                <div class="stat-value" id="stat-health">98%</div>
-            </div>
-        </section>
-
-        <!-- Machine Grid -->
-        <h3 class="main-grid-title">Machine Analysis</h3>
-        <section class="machine-grid" id="main-grid">
-            <!-- Cards injected here -->
-        </section>
-
-        <!-- Bottom Layout -->
-        <div class="bottom-layout">
-            <div class="panel-card">
-                <h2>Diagnostic Alerts</h2>
-                <div id="alerts-list">
-                    <!-- Alerts injected here -->
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="side-nav">
+            <div class="side-top">
+                <div class="brand">ATLAS <span>+</span></div>
+                <div class="sentinel-tag">
+                    <div class="sentinel-icon">🛡️</div>
+                    <div>
+                        <div class="s-ver">SENTINEL V2.4</div>
+                        <div class="s-node">NODE: OSCAR-09</div>
+                    </div>
                 </div>
             </div>
-            <div class="panel-card">
-                <h2>Risk Priority</h2>
-                <div id="priority-list">
-                    <!-- Priority row injected here -->
+
+            <nav class="nav-menu">
+                <a href="#" class="nav-item"><span>OVERVIEW</span></a>
+                <a href="#" class="nav-item active"><span>TELEMETRY</span></a>
+                <a href="#" class="nav-item"><span>RISK MATRIX</span></a>
+                <a href="#" class="nav-item"><span>AI INSIGHTS</span></a>
+                <a href="#" class="nav-item"><span>SYSTEM LOG</span></a>
+            </nav>
+
+            <button class="emergency-btn">EMERGENCY STOP</button>
+        </aside>
+
+        <!-- Main Workspace -->
+        <div class="main-wrapper">
+            <header class="top-bar">
+                <div class="view-links">
+                    <a href="#" id="engLink" class="active" onclick="switchView('engineer')">Digital Twin</a>
+                    <a href="#" id="techLink" onclick="switchView('technician')">Alert Stack</a>
+                    <a href="#">Analytics</a>
+                    <a href="#">Diagnostics</a>
                 </div>
-            </div>
+                
+                <div class="top-actions">
+                    <div class="search-box">
+                        <input type="text" placeholder="Search parameters...">
+                    </div>
+                    <div class="icon-btn">🔔</div>
+                    <div class="icon-btn">⚙️</div>
+                    <div class="user-avatar"></div>
+                </div>
+            </header>
+
+            <main class="dashboard-grid">
+                <!-- Content Area -->
+                <section class="viewport-content" id="main-content">
+                    <!-- Injected by JS based on view -->
+                </section>
+
+                <!-- Insights Sidebar -->
+                <aside class="insight-sidebar">
+                    <div class="insight-header">
+                        <span class="ai-icon">🧠</span>
+                        <div>
+                            <h3>AI INSIGHTS</h3>
+                            <p>Explainable AI Core Active</p>
+                        </div>
+                    </div>
+
+                    <div id="insight-feed" class="insight-feed">
+                        <!-- Alert cards injected here -->
+                    </div>
+
+                    <div class="live-feed">
+                        <div class="feed-img" id="machine-node-view">
+                            <!-- Visual placeholder or image -->
+                             <span>LIVE FEED: NODE-09</span>
+                        </div>
+                    </div>
+
+                    <div class="system-health-panel">
+                        <div class="health-meta">
+                            <span>SYSTEM HEALTH</span>
+                            <span class="health-status">OPTIMAL</span>
+                        </div>
+                        <div class="health-steps">
+                            <div class="step active"></div>
+                            <div class="step active"></div>
+                            <div class="step active"></div>
+                            <div class="step active"></div>
+                            <div class="step"></div>
+                        </div>
+                    </div>
+                </aside>
+            </main>
         </div>
-    </main>
+    </div>
 
     <script src="app.js"></script>
 </body>

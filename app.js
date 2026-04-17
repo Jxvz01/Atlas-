@@ -1,8 +1,9 @@
 let machineData = [];
-let currentView = 'engineer';
-let historyMap = {}; 
+let currentView = 'engineer'; // engineer (Digital Twin) | technician (Alert Stack)
 let chartInstances = {};
+let historyMap = {};
 
+// Initialize machine history for charts
 async function init() {
     try {
         const response = await fetch('data.json');
@@ -10,235 +11,288 @@ async function init() {
         
         machineData.forEach(m => {
             historyMap[m.machine_id] = {
-                temp: Array(15).fill(m.temperature),
-                vib: Array(15).fill(m.vibration)
+                temp: Array(30).fill(m.temperature),
+                vib: Array(30).fill(m.vibration)
             };
         });
 
         renderDashboard();
+        renderInsights();
         startSimulation();
     } catch (error) {
-        console.error('Error loading machine data:', error);
+        console.error("Error loading machine data:", error);
     }
 }
 
-function getRisk(temp, vib) {
-    if (temp > 80 || vib > 2) return 'HIGH';
-    if (temp > 65 || vib > 1) return 'MEDIUM';
-    return 'LOW';
+// Data Simulation
+function startSimulation() {
+    setInterval(() => {
+        machineData.forEach(m => {
+            // Realistic drift
+            const shiftT = (Math.random() - 0.5) * 4;
+            const shiftV = (Math.random() - 0.5) * 0.6;
+            
+            m.temperature = Math.max(30, Math.min(110, m.temperature + shiftT));
+            m.vibration = Math.max(0.1, Math.min(7, m.vibration + shiftV));
+
+            // Update history
+            const h = historyMap[m.machine_id];
+            h.temp.push(m.temperature);
+            h.vib.push(m.vibration);
+            if (h.temp.length > 30) {
+                h.temp.shift();
+                h.vib.shift();
+            }
+        });
+        
+        updateLiveValues();
+        renderCharts();
+    }, 2000);
+}
+
+function updateLiveValues() {
+    machineData.forEach(m => {
+        const tempEls = document.querySelectorAll(`.live-temp-${m.machine_id}`);
+        tempEls.forEach(el => el.textContent = `${m.temperature.toFixed(1)}°C`);
+    });
 }
 
 function switchView(view) {
     currentView = view;
-    document.getElementById('engineerBtn').classList.toggle('active', view === 'engineer');
-    document.getElementById('technicianBtn').classList.toggle('active', view === 'technician');
-    document.getElementById('role-tag').textContent = `ROLE: ${view.toUpperCase()}`;
     
-    // Clear the grid to force a full re-render for the toggle
-    document.getElementById('main-grid').innerHTML = '';
-    Object.values(chartInstances).forEach(c => c.destroy());
-    chartInstances = {};
+    // UI Feedback for Nav
+    document.getElementById('engLink').classList.toggle('active', view === 'engineer');
+    document.getElementById('techLink').classList.toggle('active', view === 'technician');
     
     renderDashboard();
+    renderCharts();
 }
 
 function renderDashboard() {
-    updateHeroStats();
-    renderMachineGrid();
-    renderCharts();
-    renderAlerts();
-    renderPriority();
+    const container = document.getElementById('main-content');
+    if (!container) return;
+
+    if (currentView === 'engineer') {
+        renderEngineerMode(container);
+    } else {
+        renderTechnicianMode(container);
+    }
 }
 
-function updateHeroStats() {
-    document.getElementById('stat-total').textContent = machineData.length;
-    const critical = machineData.filter(m => getRisk(m.temperature, m.vibration) === 'HIGH').length;
-    document.getElementById('stat-critical').textContent = critical;
+function renderEngineerMode(container) {
+    const m = machineData[0]; // Focus on primary machine
     
-    const healthy = machineData.filter(m => getRisk(m.temperature, m.vibration) === 'LOW').length;
-    const healthPercent = Math.round((healthy / machineData.length) * 100);
-    document.getElementById('stat-health').textContent = `${healthPercent}%`;
-}
-
-function renderMachineGrid() {
-    const grid = document.getElementById('main-grid');
-    
-    machineData.forEach(m => {
-        let card = document.querySelector(`.m-card[data-id="${m.machine_id}"]`);
-        const risk = getRisk(m.temperature, m.vibration);
-        const color = `var(--accent-${risk.toLowerCase()})`;
-
-        if (!card) {
-            const cardHtml = `
-                <div class="m-card" data-id="${m.machine_id}">
-                    <div class="m-card-top">
-                        <span class="m-id">${m.machine_id}</span>
-                        <span class="risk-tag" style="color: ${color}">${risk}</span>
-                    </div>
-                    <div class="m-data-grid">
-                        <div class="data-node">
-                            <span class="node-label">Temperature</span>
-                            <span class="node-val val-temp">${m.temperature.toFixed(1)}°C</span>
-                        </div>
-                        <div class="data-node">
-                            <span class="node-label">Vibration</span>
-                            <span class="node-val val-vib">${m.vibration.toFixed(2)} mm/s</span>
-                        </div>
-                        <div class="data-node">
-                            <span class="node-label">RPM</span>
-                            <span class="node-val">${m.rpm}</span>
-                        </div>
-                        <div class="data-node">
-                            <span class="node-label">Current</span>
-                            <span class="node-val">${m.current}A</span>
-                        </div>
-                    </div>
-                    ${currentView === 'engineer' ? `
-                        <div class="chart-wrap">
-                            <canvas id="chart-${m.machine_id}"></canvas>
-                        </div>
-                    ` : ''}
+    container.innerHTML = `
+        <div class="view-header">
+            <div class="view-title">
+                <h2>Digital Twin <span>Engine</span></h2>
+                <div class="view-subtitle">
+                    <span>CNC_01 Hybrid Reality Sync</span>
+                    <span>•</span>
+                    <span>Latency 4ms</span>
                 </div>
-            `;
-            grid.insertAdjacentHTML('beforeend', cardHtml);
-            card = document.querySelector(`.m-card[data-id="${m.machine_id}"]`);
-        } else {
-            // Update existing card values
-            card.querySelector('.val-temp').textContent = `${m.temperature.toFixed(1)}°C`;
-            card.querySelector('.val-vib').textContent = `${m.vibration.toFixed(2)} mm/s`;
-            const tag = card.querySelector('.risk-tag');
-            tag.textContent = risk;
-            tag.style.color = color;
-        }
-    });
+            </div>
+            <div class="view-metrics">
+                <div class="metric-badge">
+                    <div class="m-label">Risk Score</div>
+                    <div class="m-value">12<span>/100</span></div>
+                </div>
+                <div class="metric-badge">
+                    <div class="m-label">Anomaly Timer</div>
+                    <div class="m-value">00:04:12</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="telemetry-focus">
+            <div class="focus-header">
+                <h3>Vibration Baseline Analysis</h3>
+            </div>
+            <div class="big-chart-wrap">
+                <canvas id="big-telemetry-chart"></canvas>
+            </div>
+        </div>
+
+        <div class="metric-row">
+            <div class="metric-card">
+                <div class="metric-icon">🌡️</div>
+                <div class="card-data">
+                    <h4>Thermal Buffer</h4>
+                    <div class="val live-temp-${m.machine_id}">${m.temperature.toFixed(1)}°C</div>
+                    <div class="sub">
+                        <span>NOMINAL</span>
+                        <span>LIMIT: 95°C</span>
+                    </div>
+                </div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-icon">⚡</div>
+                <div class="card-data">
+                    <h4>Load Torque</h4>
+                    <div class="val">1,240<span> Nm</span></div>
+                    <div class="sub">
+                        <span>STABLE</span>
+                        <span>PEAK: 1,800 Nm</span>
+                    </div>
+                </div>
+            </div>
+            <div class="metric-card" style="border-left: 2px solid var(--accent-red)">
+                <div class="metric-icon" style="color: var(--accent-red)">📉</div>
+                <div class="card-data">
+                    <h4 style="color: var(--accent-red)">Drift Factor</h4>
+                    <div class="val">0.082<span>σ</span></div>
+                    <div class="sub">
+                        <span style="color:var(--accent-red); font-weight:800">ELEVATED VIBRATION DETECTED</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    renderCharts();
+}
+
+function renderTechnicianMode(container) {
+    container.innerHTML = `
+        <div class="view-header">
+            <div class="view-title">
+                <h2>Smart <span>Prioritization</span></h2>
+                <div class="view-subtitle">
+                    <span>Tactical overlay ranking critical system failures by immediate business impact and mechanical urgency.</span>
+                </div>
+            </div>
+            <div class="view-metrics">
+                <div class="metric-badge">
+                    <div class="m-label">Operator Trust</div>
+                    <div class="m-value">42<span> Temporary Spikes</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="threat-stack">
+            <div class="stack-card critical">
+                <div class="stack-info">
+                    <div class="m-label" style="color: var(--accent-red)">CRITICAL • ID: TK-9844-B</div>
+                    <h3>Thermal Runaway: Primary Injector #4</h3>
+                    <p>Vibration patterns in the secondary casing suggest imminent structural failure. Projected business impact: <b>$12,400/hr</b> in downtime.</p>
+                    <div class="stack-stats">
+                        <div class="s-metric"><div class="l">Urgency</div><div class="v" style="color: var(--accent-red)">04m 12s to Failure</div></div>
+                        <div class="s-metric"><div class="l">Confidence</div><div class="v">98.4%</div></div>
+                    </div>
+                </div>
+                <div class="stack-actions">
+                    <button class="call-to-action primary">TRIGGER WORK ORDER</button>
+                    <button class="call-to-action secondary">ACKNOWLEDGE</button>
+                </div>
+            </div>
+
+            <div class="stack-card priority">
+                <div class="stack-info">
+                    <div class="m-label" style="color: var(--accent-cyan)">PRIORITY • ID: PR-1120-X</div>
+                    <h3>Lubricant Viscosity Degradation</h3>
+                    <p>Main bearing assembly showing 15% increase in friction coefficient. Early maintenance will prevent long-term scoring of the shaft.</p>
+                </div>
+                <div class="stack-actions">
+                    <button class="call-to-action secondary">SCHEDULE REPAIR</button>
+                    <button class="call-to-action secondary">DISMISS</button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function renderInsights() {
+    const feed = document.getElementById('insight-feed');
+    if (!feed) return;
+
+    feed.innerHTML = `
+        <div class="insight-card predictive">
+            <div class="card-meta">
+                <span class="tag-predictive">PREDICTIVE</span>
+                <span>2m ago</span>
+            </div>
+            <h4>CNC_01: Vibration 12% above baseline</h4>
+            <p>Root cause identified as spindle bearing wear in sector 4. Maintenance advised within 48 operational hours.</p>
+            <button class="action-btn">REQUEST DIAGNOSTICS</button>
+        </div>
+        <div class="insight-card critical">
+            <div class="card-meta">
+                <span class="tag-critical">CRITICAL</span>
+                <span>15m ago</span>
+            </div>
+            <h4>Thermal Drift detected in AXIS-Y</h4>
+            <p>Consistent deviation of +4.2% from calibrated thermal profile. Potential cooling manifold blockage.</p>
+            <button class="action-btn primary">ISOLATE AXIS</button>
+            <button class="icon-btn" style="position:absolute; top:1.5rem; right:1rem">✖</button>
+        </div>
+    `;
 }
 
 function renderCharts() {
-    if (currentView !== 'engineer') return;
+    if (currentView !== 'engineer') {
+        if (chartInstances['big']) {
+            chartInstances['big'].destroy();
+            delete chartInstances['big'];
+        }
+        return;
+    }
 
-    machineData.forEach(m => {
-        const canvas = document.getElementById(`chart-${m.machine_id}`);
-        if (!canvas) return;
-        
-        const history = historyMap[m.machine_id];
+    const canvas = document.getElementById('big-telemetry-chart');
+    if (!canvas) return;
 
-        if (chartInstances[m.machine_id]) {
-            const chart = chartInstances[m.machine_id];
-            chart.data.datasets[0].data = history.temp;
-            chart.data.datasets[1].data = history.vib;
-            chart.update('none'); 
-        } else {
-            const ctx = canvas.getContext('2d');
-            chartInstances[m.machine_id] = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: Array(15).fill(''),
-                    datasets: [
-                        {
-                            label: 'Temp',
-                            data: [...history.temp],
-                            borderColor: '#00f2ff',
-                            backgroundColor: 'rgba(0, 242, 255, 0.1)',
-                            borderWidth: 3,
-                            pointRadius: 0,
-                            tension: 0.4,
-                            fill: true
-                        },
-                        {
-                            label: 'Vib',
-                            data: [...history.vib],
-                            borderColor: '#ffb4ab',
-                            backgroundColor: 'rgba(255, 180, 171, 0.1)',
-                            borderWidth: 3,
-                            pointRadius: 0,
-                            tension: 0.4,
-                            fill: true,
-                            yAxisID: 'y1'
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    animation: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        x: { display: false },
-                        y: { 
-                            display: false,
-                            min: 20,
-                            max: 110
-                        },
-                        y1: { 
-                            display: false, 
-                            position: 'right',
-                            min: 0,
-                            max: 6
-                        }
+    const m = machineData[0];
+    const history = historyMap[m.machine_id];
+
+    if (chartInstances['big']) {
+        const chart = chartInstances['big'];
+        chart.data.datasets[0].data = history.vib.map(v => v + Math.sin(Date.now()/800) * 0.3);
+        chart.data.datasets[1].data = history.vib.map(v => v * 0.7 + Math.cos(Date.now()/800) * 0.4);
+        chart.update('none');
+    } else {
+        const ctx = canvas.getContext('2d');
+        chartInstances['big'] = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: Array(30).fill(''),
+                datasets: [
+                    {
+                        label: 'ACTUAL',
+                        data: [...history.vib],
+                        borderColor: '#00f2ff',
+                        borderWidth: 3,
+                        pointRadius: 0,
+                        tension: 0.6,
+                        fill: false
+                    },
+                    {
+                        label: 'PREDICTED',
+                        data: [...history.vib],
+                        borderColor: 'rgba(255,255,255,0.05)',
+                        borderDash: [8, 4],
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.6,
+                        fill: false
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { display: false },
+                    y: { 
+                        display: false,
+                        min: 0,
+                        max: 9
                     }
                 }
-            });
-        }
-    });
-}
-
-function renderAlerts() {
-    const list = document.getElementById('alerts-list');
-    const anomalies = machineData.filter(m => getRisk(m.temperature, m.vibration) !== 'LOW');
-    
-    list.innerHTML = anomalies.map(m => {
-        const risk = getRisk(m.temperature, m.vibration);
-        return `
-            <div class="alert-row">
-                <div class="alert-icon">⚠️</div>
-                <div class="alert-body">
-                    <h4 style="color: var(--accent-red)">${risk} PRIORITY</h4>
-                    <p>${m.machine_id} exceeding threshold. Immediate inspection required.</p>
-                </div>
-            </div>
-        `;
-    }).join('') || '<div style="color: #555; font-size: 0.8rem; padding: 1rem;">No diagnostic alerts.</div>';
-}
-
-function renderPriority() {
-    const list = document.getElementById('priority-list');
-    const sorted = [...machineData].sort((a, b) => {
-        const riskMap = { 'HIGH': 3, 'MEDIUM': 2, 'LOW': 1 };
-        return riskMap[getRisk(b.temperature, b.vibration)] - riskMap[getRisk(a.temperature, a.vibration)];
-    });
-
-    list.innerHTML = sorted.map(m => {
-        const risk = getRisk(m.temperature, m.vibration);
-        return `
-            <div class="priority-row">
-                <span>${m.machine_id}</span>
-                <span style="color: var(--accent-${risk.toLowerCase()})">${risk}</span>
-            </div>
-        `;
-    }).join('');
-}
-
-function startSimulation() {
-    setInterval(() => {
-        machineData = machineData.map(m => {
-            const tShift = (Math.random() - 0.5) * 8;
-            const vShift = (Math.random() - 0.5) * 0.5;
-            
-            const newT = Math.max(30, Math.min(100, m.temperature + tShift));
-            const newV = Math.max(0.1, Math.min(5, m.vibration + vShift));
-
-            historyMap[m.machine_id].temp.push(newT);
-            historyMap[m.machine_id].vib.push(newV);
-            
-            if (historyMap[m.machine_id].temp.length > 15) {
-                historyMap[m.machine_id].temp.shift();
-                historyMap[m.machine_id].vib.shift();
             }
-
-            return { ...m, temperature: newT, vibration: newV };
         });
-        renderDashboard();
-    }, 4000);
+    }
 }
 
-init();
+// Global Initialization
+document.addEventListener('DOMContentLoaded', init);
+window.switchView = switchView;
