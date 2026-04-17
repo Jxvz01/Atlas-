@@ -3,6 +3,15 @@ let chartInstances = {};
 let historyMap = {};
 let dtInterval = null;
 let currentRole = "ENGINEER";
+let eventSources = {};
+
+// DECISION ENGINE STATE (for noise filtering)
+let machineEngineState = {
+    "CNC_01": { consecutiveHigh: 0, consecutiveMedium: 0, rpmBaseline: 1500 },
+    "CNC_02": { consecutiveHigh: 0, consecutiveMedium: 0, rpmBaseline: 1800 },
+    "PUMP_03": { consecutiveHigh: 0, consecutiveMedium: 0, rpmBaseline: 3000 },
+    "CONVEYOR_04": { consecutiveHigh: 0, consecutiveMedium: 0, rpmBaseline: 800 }
+};
 
 /**
  * INITIALIZATION
@@ -23,30 +32,23 @@ async function init() {
 
     renderRoleUI();
 
-    try {
-        const response = await fetch('/api/machines');
-        const data = await response.json();
-        machineData = data.machines;
-        
-        machineData.forEach(m => {
-            historyMap[m.machine_id] = {
-                temp: Array(30).fill(m.temperature),
-                vib: Array(30).fill(m.vibration),
-                rpm: Array(30).fill(m.rpm),
-                curr: Array(30).fill(m.current)
-            };
-        });
+    // Initialize History Map with empty buckets for external machines
+    ["CNC_01", "CNC_02", "PUMP_03", "CONVEYOR_04"].forEach(id => {
+        historyMap[id] = {
+            temp: Array(30).fill(0),
+            vib: Array(30).fill(0),
+            rpm: Array(30).fill(0),
+            curr: Array(30).fill(0)
+        };
+    });
 
-        // Hide login, show app
-        document.getElementById('login-container').style.display = 'none';
-        document.querySelector('.app-container').style.display = 'flex';
+    // Hide login, show app
+    document.getElementById('login-container').style.display = 'none';
+    document.querySelector('.app-container').style.display = 'flex';
 
-        populateAllPages();
-        renderInsights();
-        startGlobalSimulation();
-        
-        showPage('homePage');
-    } catch (error) {
+    connectToSensorStreams();
+    showPage('homePage');
+}
         console.error("Critical: Telemetry link failed", error);
     }
 }
@@ -491,40 +493,126 @@ function renderInsights() {
 /**
  * ROLE ENGINE
  */
-function startGlobalSimulation() {
-    setInterval(async () => {
-        try {
-            const response = await fetch('/api/machines');
-            const data = await response.json();
-            machineData = data.machines;
+/**
+ * EXTERNAL SENSOR REAL-TIME STREAMING (SSE)
+ */
+function connectToSensorStreams() {
+    const ids = ["CNC_01", "CNC_02", "PUMP_03", "CONVEYOR_04"];
+    
+    ids.forEach(id => {
+        if (eventSources[id]) eventSources[id].close();
+        
+        console.log(`📡 Opening stream for ${id}...`);
+        const es = new EventSource(`http://localhost:3000/stream/${id}`);
+        
+        es.onmessage = (event) => {
+            const raw = JSON.parse(event.data);
             
-            machineData.forEach(m => {
-                const h = historyMap[m.machine_id];
-                if (h) {
-                    h.temp.push(m.temperature); 
-                    h.vib.push(m.vibration);
-                    h.rpm.push(m.rpm);
-                    h.curr.push(m.current);
-                    if (h.temp.length > 30) { 
-                        h.temp.shift(); 
-                        h.vib.shift(); 
-                        h.rpm.shift(); 
-                        h.curr.shift(); 
-                    }
-                }
-            });
-            
-            if (document.getElementById('homePage').style.display !== 'none') {
-                renderHomeChart();
-            }
+            // Step 4: Format to internal engine specs
+            const formatted = {
+                machine_id: raw.machine_id,
+                temperature: raw.temperature_C,
+                vibration: raw.vibration_mm_s,
+                rpm: raw.rpm,
+                current: raw.current_A
+            };
 
-            if (currentRole === 'ENGINEER' && document.getElementById('analyticsPage').style.display === 'block') {
-                renderAnalyticsCharts();
-            }
-        } catch (e) {
-            console.error("Link failure", e);
+            // Process through Decision Engine
+            const processed = processMachineData(formatted);
+            
+            // Update local state
+            updateMachineState(processed);
+        };
+
+        es.onerror = (err) => {
+            console.warn(`⚠️ SSE Link Lost: ${id}. Retrying...`);
+        };
+
+        eventSources[id] = es;
+    });
+
+    // Start UI update loop (faster than SSE for smooth charts)
+    setInterval(() => {
+        if (document.getElementById('homePage').style.display !== 'none') {
+            renderHomeChart();
         }
-    }, 2000);
+        if (currentRole === 'ENGINEER' && document.getElementById('analyticsPage').style.display === 'block') {
+            renderAnalyticsCharts();
+        }
+        populateAllPages();
+        renderInsights();
+    }, 1000);
+}
+
+function processMachineData(m) {
+    const state = machineEngineState[m.machine_id];
+    if (!state) return m;
+
+    // DECISION ENGINE: MULTI-SIGNAL ANALYSIS
+    const rpmDropRatio = (state.rpmBaseline - m.rpm) / state.rpmBaseline;
+    const isRpmDropSignificant = rpmDropRatio > 0.20;
+    const isRpmInstable = rpmDropRatio > 0.10;
+    
+    const h = historyMap[m.machine_id];
+    const prevCurrent = h && h.curr.length > 0 ? h.curr[h.curr.length - 1] : m.current;
+    const isCurrentSpike = m.current > (prevCurrent * 1.3);
+
+    const isHighCondition = (m.temperature > 80 && m.vibration > 2) || isRpmDropSignificant || isCurrentSpike;
+    const isMediumCondition = m.temperature > 65 || m.vibration > 1 || isRpmInstable;
+
+    // NOISE FILTER
+    if (isHighCondition) state.consecutiveHigh++; else state.consecutiveHigh = 0;
+    if (isMediumCondition) state.consecutiveMedium++; else state.consecutiveMedium = 0;
+
+    let risk = "LOW";
+    let priority = 1;
+
+    if (state.consecutiveHigh >= 3) {
+        risk = "HIGH";
+        priority = 3;
+    } else if (state.consecutiveMedium >= 3) {
+        risk = "MEDIUM";
+        priority = 2;
+    }
+
+    // EXPLANATION ENGINE
+    let explanation = "Machine operating within normal conditions";
+    if (risk === "HIGH") {
+        if (m.temperature > 80 && m.vibration > 2) explanation = "Bearing wear likely due to sustained vibration and heat";
+        else if (isRpmDropSignificant) explanation = "Critical RPM drop: Possible mechanical blockage or load issue";
+        else if (isCurrentSpike) explanation = "Electrical overload detected: Sudden current spike";
+    } else if (risk === "MEDIUM") {
+        if (m.temperature > 65) explanation = "Thermal trend above baseline, monitor intake flow";
+        else if (m.vibration > 1) explanation = "Slight vibration instability detected in housing";
+        else if (isRpmInstable) explanation = "RPM fluctuation detected: Load balance shift";
+    }
+
+    return { ...m, risk, priority, explanation };
+}
+
+function updateMachineState(m) {
+    // 1. Update Global Machine Data Array
+    const idx = machineData.findIndex(item => item.machine_id === m.machine_id);
+    if (idx !== -1) {
+        machineData[idx] = m;
+    } else {
+        machineData.push(m);
+    }
+
+    // 2. Sort by Priority
+    machineData.sort((a, b) => b.priority - a.priority);
+
+    // 3. Update History for charts
+    const h = historyMap[m.machine_id];
+    if (h) {
+        h.temp.push(m.temperature);
+        h.vib.push(m.vibration);
+        h.rpm.push(m.rpm);
+        h.curr.push(m.current);
+        if (h.temp.length > 30) {
+            h.temp.shift(); h.vib.shift(); h.rpm.shift(); h.curr.shift();
+        }
+    }
 }
 
 function renderHomeChart() {
