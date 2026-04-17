@@ -327,15 +327,6 @@ function renderInsights() {
 /**
  * ROLE ENGINE
  */
-function switchRole() {
-    currentRole = (currentRole === "ENGINEER") ? "TECHNICIAN" : "ENGINEER";
-    document.getElementById('roleIndicator').textContent = currentRole;
-    alert(`Switched to ${currentRole} view`);
-}
-
-/**
- * TELEMETRY ENGINE
- */
 function startGlobalSimulation() {
     setInterval(async () => {
         try {
@@ -416,6 +407,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
 window.showPage = showPage;
 window.handleSidebarScroll = handleSidebarScroll;
-window.switchRole = switchRole;
 window.handleLogin = handleLogin;
 window.handleLogout = handleLogout;
