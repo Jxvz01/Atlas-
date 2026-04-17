@@ -107,7 +107,7 @@ app.get('/', (req, res) => {
 app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
     
-    // Role-based credentials for ATLAS+ Tactical Access
+    // STRICT Role-based credentials (Exactly one per role)
     if (username === 'engineer' && password === 'eng123') {
         res.json({ 
             success: true, 
@@ -121,7 +121,7 @@ app.post('/api/login', (req, res) => {
             user: { role: 'TECHNICIAN', name: 'Maintenance Tech' }
         });
     } else {
-        res.status(401).json({ success: false, message: 'CRITICAL: ACCESS DENIED. NO SUCH ROLE FOUND.' });
+        res.status(401).json({ success: false, message: 'CRITICAL: ACCESS DENIED. UNAUTHORIZED ROLE OR KEY.' });
     }
 });
 

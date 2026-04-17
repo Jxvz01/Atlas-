@@ -6,8 +6,8 @@
 // Mock Database
 const MOCK_DB = {
     users: [
-        { id: 'ENG001', password: 'Eng@123', role: 'Engineer' },
-        { id: 'TECH001', password: 'Tech@123', role: 'Technician' }
+        { id: 'engineer', password: 'eng123', role: 'Engineer' },
+        { id: 'technician', password: 'tech123', role: 'Technician' }
     ]
 };
 
