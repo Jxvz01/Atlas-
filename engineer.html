@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Engineer Dashboard | ATLAS+</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        .dashboard-content {
+            text-align: center;
+            padding: 40px;
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            max-width: 800px;
+            width: 90%;
+            z-index: 2;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            background: rgba(45, 212, 191, 0.2);
+            color: var(--secondary);
+            border-radius: 20px;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 40px;
+        }
+        .stat-card {
+            background: var(--input-bg);
+            padding: 20px;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+        }
+        .logout-link {
+            display: inline-block;
+            margin-top: 30px;
+            color: var(--text-dim);
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .logout-link:hover {
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="background-overlay"></div>
+    <div class="dashboard-content">
+        <span class="status-badge">System Online</span>
+        <h1>Engineer Dashboard</h1>
+        <p class="subtitle">Welcome back, Chief Engineer. System analytics are ready.</p>
+        
+        <div class="grid">
+            <div class="stat-card">
+                <h3>Core Temp</h3>
+                <p style="font-size: 24px; color: var(--primary); margin-top: 10px;">42.5°C</p>
+            </div>
+            <div class="stat-card">
+                <h3>Efficiency</h3>
+                <p style="font-size: 24px; color: var(--secondary); margin-top: 10px;">98.2%</p>
+            </div>
+            <div class="stat-card">
+                <h3>Load</h3>
+                <p style="font-size: 24px; color: #f59e0b; margin-top: 10px;">64%</p>
+            </div>
+        </div>
+        
+        <a href="index.html" class="logout-link">Sign Out</a>
+    </div>
+</body>
+</html>
