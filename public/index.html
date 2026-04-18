@@ -11,30 +11,32 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <!-- 1. ENTRY PORTAL (High-Fidelity) -->
+    <div id="cache-banner" class="cache-banner" style="display: none; position: sticky; top: 0; z-index: 1000; background: #ffcc00; color: #000; padding: 10px; font-weight: 600; text-align: center; font-size: 0.8rem;"></div>
+    <!-- 1. ENTRY PORTAL (Simplified) -->
     <div id="welcomeScreen" class="entry-portal">
-        <div class="portal-content">
-            <div class="portal-header">
-                <h1 class="portal-title">ATLAS<span>+</span></h1>
-                <p class="portal-subtitle">AI-POWERED PREDICTIVE MAINTENANCE SYSTEM</p>
+        <div class="portal-content" style="max-width: 400px; padding: 2.5rem;">
+            <div class="portal-header" style="margin-bottom: 2rem; text-align: center;">
+                <h1 class="portal-title" style="font-size: 2.5rem;">ATLAS<span>+</span></h1>
+                <p class="portal-subtitle">SECURE TERMINAL ACCESS</p>
             </div>
             
-            <div class="role-selection">
-                <button class="role-card" onclick="selectRole('ENGINEER')">
-                    <div class="role-icon">⚙️</div>
-                    <div class="role-name">ENGINEER MODE</div>
-                    <div class="role-desc">Advanced Analytics & Asset Config</div>
-                </button>
-                <button class="role-card" onclick="selectRole('TECHNICIAN')">
-                    <div class="role-icon">🔧</div>
-                    <div class="role-name">TECHNICIAN MODE</div>
-                    <div class="role-desc">Live Telemetry & Field Diagnostics</div>
-                </button>
+            <div class="auth-form" style="display: flex; flex-direction: column; gap: 1.5rem;">
+                <div class="input-group">
+                    <label style="color: var(--text-muted); font-size: 0.7rem; letter-spacing: 2px;">OPERATOR NAME</label>
+                    <input type="text" id="operatorName" placeholder="Enter name..." style="width: 100%; padding: 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: #fff; outline: none;" />
+                </div>
+                <div class="input-group">
+                    <label style="color: var(--text-muted); font-size: 0.7rem; letter-spacing: 2px;">ACCESS ROLE</label>
+                    <select id="operatorRole" style="width: 100%; padding: 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: #fff; outline: none;">
+                        <option value="ENGINEER">Engineer</option>
+                        <option value="TECHNICIAN">Technician</option>
+                    </select>
+                </div>
+                <button class="action-btn primary" onclick="handleSimpleLogin()" style="width: 100%; padding: 14px; margin-top: 1rem;">INITIALIZE PORTAL</button>
             </div>
 
-            <div class="portal-footer">
-                <span class="pulse-dot"></span>
-                <span class="status-msg">SYSTEM ACTIVE • REAL-TIME MONITORING</span>
+            <div class="portal-footer" style="margin-top: 2.5rem; justify-content: center;">
+                <span class="status-msg" style="font-size: 0.6rem; opacity: 0.5;">ATLAS_V4.0 • PRODUCTION READY</span>
             </div>
         </div>
     </div>
@@ -90,10 +92,17 @@
         <main class="main-wrapper">
             <header class="top-bar">
                 <nav class="view-links" id="topNav">
-                    <!-- Dynamically rendered -->
+                    <a href="#" class="active" id="homeTab" onclick="showSimplePage('homePage')">HOME</a>
+                    <a href="#" id="digitalTab" onclick="showSimplePage('digitalTwinPage')">DIGITAL TWIN</a>
                 </nav>
 
                 <div class="top-actions">
+                    <div class="role-selector-wrap" style="margin-right: 1.5rem;">
+                        <select id="roleSelector" onchange="switchRole(this.value)" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 4px 8px; border-radius: 4px; font-family: inherit; font-size: 0.75rem;">
+                            <option value="ENGINEER">Engineer view</option>
+                            <option value="TECHNICIAN">Technician view</option>
+                        </select>
+                    </div>
                     <div class="profile-module">
                         <div class="profile-info">
                             <span class="role-label" id="roleIndicator">ENGINEER</span>

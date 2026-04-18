@@ -484,3 +484,57 @@ body::after {
     color: var(--text-primary);
     border-color: var(--text-primary);
 }
+
+/* 13. SKELETON & ERROR STATES */
+.skeleton-card {
+    background: var(--bg-surface);
+    border-radius: var(--radius);
+    padding: 2rem;
+    border: 1px solid var(--border-subtle);
+    border-left: 4px solid var(--surface-highest);
+    min-height: 200px;
+    animation: pulse-op 2s infinite;
+}
+
+.skeleton-item {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    margin-bottom: 1rem;
+}
+
+@keyframes pulse-op {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 0.8; }
+}
+
+.error-state {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem;
+    background: rgba(255, 77, 77, 0.03);
+    border: 1px dashed rgba(255, 77, 77, 0.3);
+    border-radius: var(--radius);
+    text-align: center;
+}
+
+.error-icon {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    filter: drop-shadow(0 0 10px rgba(255, 77, 77, 0.3));
+}
+
+.error-title {
+    color: var(--status-critical);
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.error-desc {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    margin-bottom: 1.5rem;
+    max-width: 300px;
+}

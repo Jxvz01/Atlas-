@@ -1,3 +1,10 @@
+// CONFIG — In production, proxy this through a backend. For demo: keep here but do not commit secrets.
+const CONFIG = {
+    SHEETS_URL: 'https://script.google.com/macros/s/AKfycbzonNgkC5QCkaRDg8dnPBlAu4pKTtsKt9l7L6aHhyOQNxsrA2GD28PjW_vB5LVZtHgXUQ/exec',
+    SIMULATION_SERVER: 'http://localhost:3000',
+    // TODO: Move to server-side proxy before production deployment
+};
+
 let machineData = [];
 let chartInstances = {};
 let historyMap = {};
@@ -13,6 +20,90 @@ let machineEngineState = {
     "CONVEYOR_04": { consecutiveHigh: 0, consecutiveMedium: 0, rpmBaseline: 800 }
 };
 
+const THRESHOLDS = {
+    temp: 90,
+    vib: 4.5,
+    rpm: 1200,
+    curr: 16
+};
+
+// Task 7: Chart.js threshold line plugin
+const thresholdPlugin = {
+    id: 'thresholdLine',
+    afterDraw: (chart) => {
+        const threshold = chart.options.plugins.threshold?.value;
+        if (!threshold) return;
+
+        const { ctx, chartArea: { left, right }, scales: { y } } = chart;
+        const yPos = y.getPixelForValue(threshold);
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.strokeStyle = '#ff4d4d';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([5, 5]);
+        ctx.moveTo(left, yPos);
+        ctx.lineTo(right, yPos);
+        ctx.stroke();
+        
+        ctx.fillStyle = '#ff4d4d';
+        ctx.font = 'bold 10px Inter';
+        ctx.fillText('⚠ THRESHOLD', right - 70, yPos - 5);
+        ctx.restore();
+    }
+};
+Chart.register(thresholdPlugin);
+
+const SIMULATED_READINGS = {
+  CNC_01: { temperature_C: 102, vibration_mm_s: 8.5, rpm: 980, current_A: 17.2, status: 'warning' },
+  CNC_02: { temperature_C: 118, vibration_mm_s: 2.1, rpm: 1480, current_A: 14.1, status: 'warning' },
+  PUMP_03: { temperature_C: 78, vibration_mm_s: 5.8, rpm: 820, current_A: 11.5, status: 'warning' },
+  CONVEYOR_04: { temperature_C: 65, vibration_mm_s: 1.2, rpm: 1450, current_A: 9.8, status: 'running' },
+};
+
+let simulationState = {};
+
+/**
+ * UTILITY: Resilient Fetch with Fallback
+ */
+async function fetchWithFallback(url, cacheKey, options = {}) {
+    try {
+        const res = await fetch(url, options);
+        if (!res.ok) throw new Error('Fetch failed');
+        
+        // If it's a POST with no-cors (for Sheets), we won't get JSON back
+        if (options.mode === 'no-cors') return { success: true };
+
+        const data = await res.json();
+        localStorage.setItem(cacheKey, JSON.stringify(data));
+        localStorage.setItem(cacheKey + '_time', Date.now());
+        hideCacheBanner();
+        return { data, fromCache: false };
+    } catch (e) {
+        console.warn(`⚠️ Network fail for ${url}. Attempting cache...`);
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+            const time = localStorage.getItem(cacheKey + '_time');
+            showCacheBanner(time);
+            return { data: JSON.parse(cached), fromCache: true, time };
+        }
+        throw new Error('No data available and no cache found.');
+    }
+}
+
+function showCacheBanner(timestamp) {
+    const banner = document.getElementById('cache-banner');
+    if (!banner) return;
+    const timeStr = new Date(parseInt(timestamp)).toLocaleTimeString();
+    banner.innerHTML = `⚠️ Showing cached data from ${timeStr} <button onclick="hideCacheBanner()" style="background:transparent; border:none; color:inherit; cursor:pointer; font-weight:bold; margin-left:10px;">✕</button>`;
+    banner.style.display = 'block';
+}
+
+function hideCacheBanner() {
+    const banner = document.getElementById('cache-banner');
+    if (banner) banner.style.display = 'none';
+}
+
 /**
  * INITIALIZATION
  */
@@ -20,14 +111,13 @@ async function init() {
     const token = localStorage.getItem('atlas_token');
     const user = JSON.parse(localStorage.getItem('atlas_user') || '{}');
     
-    if (!token) {
+    if (!token && !localStorage.getItem('atlas_role')) {
         document.getElementById('welcomeScreen').style.display = 'flex';
-        document.getElementById('login-container').style.display = 'none';
         document.querySelector('.app-container').style.display = 'none';
         return;
     }
 
-    currentRole = user.role || "ENGINEER";
+    currentRole = localStorage.getItem('atlas_role') || "ENGINEER";
     const roleIndicator = document.getElementById('roleIndicator');
     if (roleIndicator) roleIndicator.textContent = currentRole;
 
@@ -51,9 +141,11 @@ async function init() {
         if (savedData) {
             machineData = JSON.parse(savedData);
         } else {
+            // Task 3: Show Skeletons on first load
+            renderSkeletons();
             machineData = ["CNC_01", "CNC_02", "PUMP_03", "CONVEYOR_04"].map(id => ({
                 machine_id: id, temperature: 0, vibration: 0, rpm: 0, current: 0, 
-                risk: 'LOW', priority: 1, explanation: 'Syncing...'
+                risk: 'LOW', priority: 1, explanation: 'Establishing link...'
             }));
         }
     }
@@ -61,14 +153,15 @@ async function init() {
     // DUAL-LAYER PERSISTENCE: Attempt Server Disk Load if LocalStorage is empty
     if (!savedHistory) {
         try {
-            const serverRes = await fetch('/api/get-telemetry'); 
-            const serverData = await serverRes.json();
-            if (serverData.success) {
-                historyMap = serverData.historyMap;
-                machineData = serverData.machineData;
-                console.log("💾 LOADED STATE FROM SERVER DISK.");
+            const result = await fetchWithFallback(`${CONFIG.SIMULATION_SERVER}/api/get-telemetry`, 'atlas_cache');
+            if (result.data) {
+                historyMap = result.data.historyMap || historyMap;
+                machineData = result.data.machineData || machineData;
+                console.log(result.fromCache ? "📦 LOADED FROM CACHE." : "💾 LOADED STATE FROM SERVER DISK.");
             }
-        } catch(e) { /* Fallback to defaults */ }
+        } catch(e) { 
+            console.error("Critical Load Failure:", e.message);
+        }
     }
 
     populateStaticShells();
@@ -80,31 +173,39 @@ async function init() {
     showPage('homePage');
 }
 
-/**
- * ENTRY PORTAL LOGIC
- */
-function selectRole(role) {
-    const loginContainer = document.getElementById('login-container');
-    const welcomeScreen = document.getElementById('welcomeScreen');
-    const loginTitle = document.getElementById('loginTitle');
+function handleSimpleLogin() {
+    const name = document.getElementById('operatorName').value.trim();
+    const role = document.getElementById('operatorRole').value;
     
-    welcomeScreen.style.display = 'none';
-    loginContainer.style.display = 'flex';
-    loginTitle.textContent = `${role} AUTHENTICATION`;
-    
-    // Pre-fill username for convenience (as per user role locking)
-    document.getElementById('username').value = role.toLowerCase();
-    
-    const passField = document.getElementById('password');
-    if (passField) {
-        passField.value = "";
-        passField.focus();
-        
-        // Add Enter Key Support
-        passField.onkeyup = (e) => {
-            if (e.key === "Enter") handleLogin();
-        };
+    if (!name) {
+        alert("REQUIRED: OPERATOR NAME");
+        return;
     }
+
+    currentRole = role;
+    localStorage.setItem('atlas_role', role);
+    localStorage.setItem('atlas_user_name', name);
+    
+    document.getElementById('roleIndicator').textContent = role;
+    document.getElementById('welcomeScreen').style.display = 'none';
+    document.querySelector('.app-container').style.display = 'flex';
+    
+    logToSystem(`${role} PORTAL INITIALIZED BY ${name.toUpperCase()}`);
+    init();
+}
+
+function showSimplePage(pageId) {
+    const pages = document.querySelectorAll(".page");
+    pages.forEach(p => p.style.display = "none");
+    
+    document.getElementById(pageId).style.display = "block";
+    
+    // Update tabs
+    document.getElementById('homeTab').classList.toggle('active', pageId === 'homePage');
+    document.getElementById('digitalTab').classList.toggle('active', pageId === 'digitalTwinPage');
+    
+    if (pageId === 'homePage') setTimeout(renderHomeChart, 50);
+    if (pageId === 'digitalTwinPage') startDigitalTwin();
 }
 
 function goBackToWelcome() {
@@ -113,43 +214,31 @@ function goBackToWelcome() {
 }
 
 /**
- * AUTHENTICATION LOGIC
- */
+ * AUTHENT/*
 async function handleLogin() {
-    const userEl = document.getElementById('username');
-    const passEl = document.getElementById('password');
-    const errEl = document.getElementById('auth-error');
+    // Legacy Auth Flow - Disabling for direct role-toggle demo
+}
+*/
+
+function selectRole(role) {
+    currentRole = role;
+    localStorage.setItem('atlas_role', role);
+    document.getElementById('roleIndicator').textContent = role;
+    showPage('home');
+    logToSystem(`AUTHENTICATED AS ${role}`);
+}
+
+function switchRole(role) {
+    currentRole = role;
+    localStorage.setItem('atlas_role', role);
+    document.getElementById('roleIndicator').textContent = role;
+    logToSystem(`OPERATIONAL ROLE SWITCHED TO ${role}`);
     
-    const username = userEl.value;
-    const password = passEl.value;
-
-    errEl.textContent = "SYNCHRONIZING...";
-
-    try {
-        const response = await fetch('/api/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password })
-        });
-
-        const data = await response.json();
-
-        if (data.success) {
-            console.log("✅ AUTHENTICATION SUCCESSFUL. OPERATIONAL ACCESS GRANTED.");
-            localStorage.setItem('atlas_token', data.token);
-            localStorage.setItem('atlas_user', JSON.stringify(data.user));
-            currentRole = data.user.role;
-            const roleIndicator = document.getElementById('roleIndicator');
-            if (roleIndicator) roleIndicator.textContent = currentRole;
-            
-            console.log("🛰️ TRANSITIONING TO DASHBOARD...");
-            renderRoleUI();
-            init();
-        } else {
-            errEl.textContent = data.message;
-        }
-    } catch (error) {
-        errEl.textContent = "CRITICAL: AUTH SERVER OFFLINE";
+    // Refresh current view to reflect role limits
+    const currentActiveLink = document.querySelector('.nav-item.active');
+    if (currentActiveLink) {
+        const pageId = currentActiveLink.getAttribute('onclick').match(/'([^']+)'/)[1];
+        showPage(pageId);
     }
 }
 
@@ -244,9 +333,9 @@ function populateStaticShells() {
                     <div class="view-subtitle">System Node: OSCAR-09 • Pulse Synchronized</div>
                 </div>
             </div>
-            <div id="telemetry" class="telemetry-focus">
+            <div id="telemetry" class="telemetry-focus" style="margin-bottom: 4rem;">
                 <div class="focus-header"><h3>LIVE TELEMETRY STREAM</h3></div>
-                <div class="big-chart-wrap"><canvas id="home-telemetry-chart"></canvas></div>
+                <div class="big-chart-wrap" style="margin-bottom: 1.5rem;"><canvas id="home-telemetry-chart"></canvas></div>
             </div>
             <div id="riskMatrix" class="card-grid">
                 <!-- Fleet summary cards -->
@@ -302,55 +391,104 @@ function populateAllPages() {
 /**
  * 1. MONITORING DASHBOARD (HOME)
  */
-function updateHomeDynamic() {
-    const riskContainer = document.getElementById('riskMatrix');
+function renderSkeletons() {
     const machineContainer = document.getElementById('machineGrid');
-    if (!riskContainer || !machineContainer) return;
-
-    // Update Fleet Summaries
-    riskContainer.innerHTML = `
-        <div class="atlas-card status-ok">
-            <div class="m-card-header">
-                <span class="m-id">FLEET_STATUS</span>
-                <span class="m-tag">NOMINAL</span>
-            </div>
-            <div class="m-stats">
-                <div class="m-metric"><label>ACTIVE NODES</label><div class="val">${machineData.length}</div></div>
-                <div class="m-metric"><label>NETWORK LATENCY</label><div class="val">12<span>ms</span></div></div>
-            </div>
+    if (!machineContainer) return;
+    machineContainer.innerHTML = Array(4).fill(0).map(() => `
+        <div class="skeleton-card">
+            <div class="skeleton-item" style="height: 20px; width: 40%"></div>
+            <div class="skeleton-item" style="height: 60px; width: 100%"></div>
+            <div class="skeleton-item" style="height: 30px; width: 80%"></div>
         </div>
-        <div class="atlas-card status-warn">
-            <div class="m-card-header"><span class="m-id">PREDICTIVE_LOAD</span><span class="m-tag">BALANCE</span></div>
-            <div class="m-stats">
-                <div class="m-metric"><label>THROUGHPUT</label><div class="val">94<span>%</span></div></div>
-                <div class="m-metric"><label>UPTIME</label><div class="val">99.9<span>%</span></div></div>
+    `).join('');
+}
+
+function renderErrorState(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.innerHTML = `
+        <div class="error-state">
+            <div class="error-icon">📡</div>
+            <div class="error-msg-box">
+                <h3 class="error-title">COULD NOT LOAD MACHINE DATA</h3>
+                <p class="error-desc">Terminal link disrupted. No local cache available for mission-critical synchronization.</p>
             </div>
+            <button class="action-btn primary" onclick="location.reload()">RETRY CONNECTION</button>
         </div>
     `;
+}
 
-    // Render Machine Grid (Actual Machines)
-    const STATUS_MAP = {
-        'LOW': { label: 'NOMINAL', class: 'status-ok' },
-        'MEDIUM': { label: 'WARNING', class: 'status-warn' },
-        'HIGH': { label: 'CRITICAL', class: 'status-critical' }
-    };
+function updateHomeDynamic() {
+    const machineContainer = document.getElementById('machineGrid');
+    if (!machineContainer) return;
 
-    machineContainer.innerHTML = machineData.map(m => {
-        const s = STATUS_MAP[m.risk] || STATUS_MAP['LOW'];
+    if (machineData.length === 0) {
+        renderErrorState('machineGrid');
+        return;
+    }
+
+    // Sort by risk priority
+    const sorted = [...machineData].sort((a, b) => b.priority - a.priority);
+
+    machineContainer.innerHTML = sorted.map(m => {
+        const riskClass = m.risk === 'HIGH' ? 'status-critical' : (m.risk === 'MEDIUM' ? 'status-warn' : 'status-ok');
+        
         return `
-            <div class="atlas-card ${s.class}">
-                <div class="m-card-header"><span class="m-id">${m.machine_id}</span><span class="m-tag">${s.label}</span></div>
-                <div class="m-stats">
-                    <div class="m-metric"><label>TMP</label><div class="val">${m.temperature.toFixed(1)}°</div></div>
-                    <div class="m-metric"><label>VIB</label><div class="val">${m.vibration.toFixed(2)}</div></div>
-                    <div class="m-metric"><label>RPM</label><div class="val">${Math.round(m.rpm)}</div></div>
+            <div class="atlas-card ${riskClass}" style="min-height: 220px;">
+                <div class="m-card-header">
+                    <span class="m-id" style="font-weight: 800; letter-spacing: 1px;">${m.machine_id}</span>
+                    <span class="m-tag">${m.risk}</span>
                 </div>
-                <div class="m-explanation" style="margin-top: 1rem; font-size: 0.75rem; color: var(--text-muted); line-height: 1.4;">
+                <div class="m-stats" style="margin: 1.5rem 0;">
+                    <div class="m-metric">
+                        <label>TEMPERATURE</label>
+                        <div class="val" style="font-size: 1.8rem;">${m.temperature.toFixed(1)}°C</div>
+                    </div>
+                    <div class="m-metric">
+                        <label>VIBRATION</label>
+                        <div class="val" style="font-size: 1.8rem;">${m.vibration.toFixed(2)}<span>mm/s</span></div>
+                    </div>
+                </div>
+                <div class="m-explanation" style="padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.05); font-size: 0.85rem; color: var(--text-muted); min-height: 40px;">
                     ${m.explanation}
                 </div>
             </div>
         `;
     }).join('');
+}
+
+function getRiskExplanation(machineId, readings, riskLevel) {
+  const { temperature, vibration, rpm, current } = readings;
+  const reasons = [];
+  if (temperature > 90) reasons.push(`temperature at ${temperature.toFixed(1)}°C (threshold: 90°C)`);
+  if (vibration > 4.5) reasons.push(`vibration at ${vibration.toFixed(2)} mm/s (threshold: 4.5)`);
+  if (rpm < 1200) reasons.push(`RPM dropped to ${Math.round(rpm)} (threshold: 1200)`);
+  if (current > 16) reasons.push(`current at ${current.toFixed(1)}A (threshold: 16A)`);
+  
+  if (reasons.length === 0) return 'All sensors within normal range.';
+  return `ATLAS+ flagged ${machineId}: ${reasons.join(', ')}.`;
+}
+
+function simulateFailure(id) {
+    simulationState[id] = true;
+    const readings = SIMULATED_READINGS[id];
+    // Injected directly via processing
+    const processed = processMachineData({
+        machine_id: id,
+        temperature: readings.temperature_C,
+        vibration: readings.vibration_mm_s,
+        rpm: readings.rpm,
+        current: readings.current_A
+    });
+    updateMachineState(processed);
+    logToSystem(`SIMULATED FAILURE INJECTED FOR ${id}`);
+    updateHomeDynamic();
+}
+
+function resetSimulation(id) {
+    delete simulationState[id];
+    logToSystem(`SIMULATION RESET FOR ${id}`);
+    updateHomeDynamic();
 }
 
 /**
@@ -366,7 +504,7 @@ function renderDigitalTwinContent() {
             </div>
         </div>
         
-        <div id="digitalTwinContainer" class="card-grid">
+        <div id="dt-container" style="width:100%; height:400px; margin-top:2rem;">
             <div class="dt-loading">
                 <p>Establishing simulation link...</p>
             </div>
@@ -377,59 +515,53 @@ function renderDigitalTwinContent() {
 async function startDigitalTwin() {
     // Digital Twin now uses the central real-time state from SSE
     console.log("🔗 Digital Twin Synchronized with SSE Stream.");
-    updateDigitalTwinDynamic();
+    renderDigitalTwin();
 }
 
 function stopDigitalTwin() {
     // No-op as it now uses the global state loop
 }
 
-function updateDigitalTwinDynamic() {
-    const container = document.getElementById('digitalTwinContainer');
-    if (!container || !machineData.length) return;
+function renderDigitalTwin() {
+    const container = document.getElementById('dt-container');
+    if (!container) return;
 
-    const STATUS_MAP = {
-        'LOW': { label: 'NOMINAL', icon: '◎', class: 'status-ok' },
-        'MEDIUM': { label: 'CAVITATION_RISK', icon: '△', class: 'status-warn' },
-        'HIGH': { label: 'THERMAL_RUNAWAY', icon: '!', class: 'status-critical' }
-    };
+    // Task 8: Clean 2D SVG Schematic
+    const svg = `
+        <svg viewBox="0 0 800 400" style="width:100%; height:100%; filter: drop-shadow(0 0 20px rgba(0,0,0,0.5));">
+            <defs>
+                <filter id="glow">
+                    <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                    <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
+            </defs>
+            <!-- Factory Floor Layout -->
+            <rect x="50" y="50" width="700" height="300" rx="10" fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.05)" />
+            
+            ${machineData.map((m, i) => {
+                const x = 150 + (i * 180);
+                const y = 200;
+                const color = m.risk === 'HIGH' ? 'var(--status-critical)' : (m.risk === 'MEDIUM' ? 'var(--status-warn)' : 'var(--status-ok)');
+                const isPulse = m.risk === 'HIGH';
+                
+                return `
+                    <g transform="translate(${x}, ${y})">
+                        <circle r="40" fill="rgba(0,0,0,0.5)" stroke="${color}" stroke-width="2" filter="url(#glow)">
+                           ${isPulse ? `<animate attributeName="stroke-opacity" values="1;0.4;1" dur="1s" repeatCount="indefinite" />` : ''}
+                        </circle>
+                        <text y="60" text-anchor="middle" fill="#fff" font-size="12" font-weight="bold">${m.machine_id}</text>
+                        <text y="80" text-anchor="middle" fill="var(--text-muted)" font-size="10">${m.risk}</text>
+                        <!-- Connection Lines -->
+                        <line x1="0" y1="-40" x2="0" y2="-100" stroke="rgba(255,255,255,0.1)" stroke-dasharray="4" />
+                    </g>
+                `;
+            }).join('')}
+            
+            <text x="400" y="380" text-anchor="middle" fill="var(--text-muted)" font-size="10" letter-spacing="2">ATLAS V2.0 SCHEMATIC VIEW</text>
+        </svg>
+    `;
 
-    const html = machineData.map(m => {
-        const s = STATUS_MAP[m.risk] || STATUS_MAP['LOW'];
-        return `
-            <div class="atlas-card ${s.class}">
-                <div class="m-card-header">
-                    <span class="m-id">${m.machine_id}</span>
-                    <span class="m-tag">${s.label}</span>
-                </div>
-                <div class="m-stats">
-                    <div class="m-metric">
-                        <label>TEMPERATURE</label>
-                        <div class="val">${m.temperature.toFixed(1)}<span>°C</span></div>
-                    </div>
-                    <div class="m-metric">
-                        <label>VIBRATION</label>
-                        <div class="val">${m.vibration.toFixed(2)}<span>mm/s</span></div>
-                    </div>
-                    <div class="m-metric">
-                        <label>RPM</label>
-                        <div class="val">${Math.round(m.rpm)}</div>
-                    </div>
-                    <div class="m-metric">
-                        <label>CURRENT</label>
-                        <div class="val">${m.current.toFixed(1)}<span>A</span></div>
-                    </div>
-                </div>
-                <div class="m-footer">
-                    <div class="m-risk"><label>HEALTH_INDEX</label><div class="risk-val">${m.risk}</div></div>
-                    <div class="m-icon" style="font-size: 1.5rem; opacity: 0.3;">${s.icon}</div>
-                </div>
-                <div class="m-explanation">"${m.explanation}"</div>
-            </div>
-        `;
-    }).join('');
-
-    container.innerHTML = html;
+    container.innerHTML = svg;
 }
 
 /**
@@ -471,7 +603,7 @@ function renderSchedulerContent() {
                 
                 <div class="input-group">
                     <label>WEBHOOK URL (PRE-CONFIGURED)</label>
-                    <input type="text" id="googleSheetUrl" value="https://script.google.com/macros/s/AKfycbzonNgkC5QCkaRDg8dnPBlAu4pKTtsKt9l7L6aHhyOQNxsrA2GD28PjW_vB5LVZtHgXUQ/exec" style="width:100%; padding:0.8rem; background:rgba(0,0,0,0.3); border:1px solid #444; color:#fff;" />
+                    <input type="text" id="googleSheetUrl" value="${CONFIG.SHEETS_URL}" style="width:100%; padding:0.8rem; background:rgba(0,0,0,0.3); border:1px solid #444; color:#fff;" />
                 </div>
                 
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem;">
@@ -514,7 +646,7 @@ function toggleCloudSync() {
         cloudSyncInterval = setInterval(async () => {
             try {
                 // Ensure data is synced right before send
-                await fetch(url, {
+                await fetchWithFallback(url, 'atlas_sheets_cache', {
                     method: 'POST',
                     mode: 'no-cors',
                     headers: { 'Content-Type': 'application/json' },
@@ -562,18 +694,47 @@ function updateAlertStackDynamic() {
     if (!container) return;
 
     const criticals = machineData.filter(m => m.risk === 'HIGH');
+    
+    // Add Export Button at the top
+    let html = `
+        <div style="grid-column: 1 / -1; display:flex; justify-content: flex-end; margin-bottom: 1rem;">
+            <button class="action-btn secondary" onclick="exportAlertsCSV()">EXPORT ALERTS (CSV)</button>
+        </div>
+    `;
+
     if (criticals.length === 0) {
-        container.innerHTML = `<div class="atlas-card" style="opacity: 0.5;"><p>No tactical alerts in stack. All nodes nominal.</p></div>`;
+        container.innerHTML = html + `<div class="atlas-card" style="opacity: 0.5; grid-column: 1 / -1;"><p>No tactical alerts in stack. All nodes nominal.</p></div>`;
         return;
     }
 
-    container.innerHTML = criticals.map(m => `
-        <div class="atlas-card status-critical">
-            <div class="m-card-header"><span class="m-id">ALRT-${m.machine_id}</span><span class="m-tag">CRITICAL</span></div>
-            <p style="font-size: 0.85rem; line-height: 1.6; margin-bottom: 1.5rem;">${m.explanation}</p>
-            <button class="action-btn primary" onclick="alert('Work Order Triggered for ${m.machine_id}')">TRIGGER REMEDIATION</button>
-        </div>
-    `).join('');
+    container.innerHTML = html + criticals.map(m => {
+        const timeOffset = Math.floor(Math.random() * 5); // Mock offset for demo
+        return `
+            <div class="atlas-card status-critical">
+                <div class="m-card-header">
+                    <span class="m-id" style="display:flex; align-items:center; gap:8px;">
+                        <span style="background:var(--status-critical); color:#000; padding:2px 6px; border-radius:3px; font-size:10px;">${m.machine_id}</span>
+                        ALRT-${m.machine_id}
+                    </span>
+                    <span class="m-tag" style="background:transparent; border:1px solid rgba(255,255,255,0.1);">${timeOffset === 0 ? 'just now' : timeOffset + ' min ago'}</span>
+                </div>
+                <p style="font-size: 0.85rem; line-height: 1.6; margin-bottom: 1.5rem; color:#fff;">${m.explanation}</p>
+                <button class="action-btn primary" onclick="alert('Work Order Triggered for ${m.machine_id}')">TRIGGER REMEDIATION</button>
+            </div>
+        `;
+    }).join('');
+}
+
+function exportAlertsCSV() {
+    const criticals = machineData.filter(m => m.risk === 'HIGH');
+    const header = 'machine_id,timestamp,risk_level,reason\n';
+    const rows = criticals.map(a => `${a.machine_id},${new Date().toISOString()},${a.risk},"${a.explanation}"`).join('\n');
+    const blob = new Blob([header + rows], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'atlas_alerts.csv'; a.click();
+    URL.revokeObjectURL(url);
+    logToSystem("ALERTS LOG EXPORTED.");
 }
 
 function renderAnalyticsContent() {
@@ -658,10 +819,21 @@ function renderAnalyticsCharts() {
                     responsive: true,
                     maintainAspectRatio: false,
                     animation: false,
-                    plugins: { legend: { display: false } },
+                    plugins: { 
+                        legend: { display: false },
+                        threshold: { value: THRESHOLDS[metrics[idx]] }
+                    },
                     scales: {
-                        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#666' } },
-                        x: { display: false }
+                        y: { 
+                            grid: { color: 'rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.1)' }, 
+                            ticks: { color: '#849495', font: { size: 10, family: 'Inter' } },
+                            suggestedMax: THRESHOLDS[metrics[idx]] * 1.5 
+                        },
+                        x: { 
+                            display: true,
+                            grid: { color: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.1)' },
+                            ticks: { display: false }
+                        }
                     }
                 }
             });
@@ -752,7 +924,7 @@ function connectToSensorStreams() {
         if (eventSources[id]) eventSources[id].close();
         
         console.log(`📡 Opening stream for ${id}...`);
-        const es = new EventSource(`http://localhost:3000/stream/${id}`);
+        const es = new EventSource(`${CONFIG.SIMULATION_SERVER}/stream/${id}`);
         
         es.onmessage = (event) => {
             const raw = JSON.parse(event.data);
@@ -760,10 +932,10 @@ function connectToSensorStreams() {
             // Step 4: Format to internal engine specs
             const formatted = {
                 machine_id: raw.machine_id,
-                temperature: raw.temperature_C,
-                vibration: raw.vibration_mm_s,
-                rpm: raw.rpm,
-                current: raw.current_A
+                temperature: raw.temperature_C || raw.temperature || 0,
+                vibration: raw.vibration_mm_s || raw.vibration || 0,
+                rpm: raw.rpm || 0,
+                current: raw.current_A || 0
             };
 
             // Process through Decision Engine
@@ -814,7 +986,7 @@ function connectToSensorStreams() {
 
 async function saveToServerDisk() {
     try {
-        await fetch('/api/save-telemetry', {
+        await fetch(`${CONFIG.SIMULATION_SERVER}/api/save-telemetry`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ machineData, historyMap })
@@ -827,21 +999,15 @@ function processMachineData(m) {
     const state = machineEngineState[m.machine_id];
     if (!state) return m;
 
-    // DECISION ENGINE: MULTI-SIGNAL ANALYSIS
-    const rpmDropRatio = (state.rpmBaseline - m.rpm) / state.rpmBaseline;
-    const isRpmDropSignificant = rpmDropRatio > 0.20;
-    const isRpmInstable = rpmDropRatio > 0.10;
-    
-    const h = historyMap[m.machine_id];
-    const prevCurrent = h && h.curr.length > 0 ? h.curr[h.curr.length - 1] : m.current;
-    const isCurrentSpike = m.current > (prevCurrent * 1.3);
+    // Task Goal: Stable Thresholds
+    // HIGH -> temp > 80 OR vib > 2
+    // MEDIUM -> temp > 65 OR vib > 1
+    const isHigh = m.temperature > 80 || m.vibration > 2;
+    const isMedium = m.temperature > 65 || m.vibration > 1;
 
-    const isHighCondition = (m.temperature > 80 && m.vibration > 2) || isRpmDropSignificant || isCurrentSpike;
-    const isMediumCondition = m.temperature > 65 || m.vibration > 1 || isRpmInstable;
-
-    // NOISE FILTER
-    if (isHighCondition) state.consecutiveHigh++; else state.consecutiveHigh = 0;
-    if (isMediumCondition) state.consecutiveMedium++; else state.consecutiveMedium = 0;
+    // Noise Filtering (3 cycles)
+    if (isHigh) state.consecutiveHigh++; else state.consecutiveHigh = 0;
+    if (isMedium) state.consecutiveMedium++; else state.consecutiveMedium = 0;
 
     let risk = "LOW";
     let priority = 1;
@@ -849,22 +1015,16 @@ function processMachineData(m) {
     if (state.consecutiveHigh >= 3) {
         risk = "HIGH";
         priority = 3;
-    } else if (state.consecutiveMedium >= 3) {
+    } else if (state.consecutiveMedium >= 2) { // Prompt asked for 2-3 cycles
         risk = "MEDIUM";
         priority = 2;
     }
 
-    // EXPLANATION ENGINE
-    let explanation = "Machine operating within normal conditions";
-    if (risk === "HIGH") {
-        if (m.temperature > 80 && m.vibration > 2) explanation = "Bearing wear likely due to sustained vibration and heat";
-        else if (isRpmDropSignificant) explanation = "Critical RPM drop: Possible mechanical blockage or load issue";
-        else if (isCurrentSpike) explanation = "Electrical overload detected: Sudden current spike";
-    } else if (risk === "MEDIUM") {
-        if (m.temperature > 65) explanation = "Thermal trend above baseline, monitor intake flow";
-        else if (m.vibration > 1) explanation = "Slight vibration instability detected in housing";
-        else if (isRpmInstable) explanation = "RPM fluctuation detected: Load balance shift";
-    }
+    // Explanation Generator
+    let explanation = "Normal operation";
+    if (m.temperature > 80 && m.vibration > 2) explanation = "Possible bearing failure";
+    else if (m.temperature > 80) explanation = "Possible overheating";
+    else if (m.vibration > 2) explanation = "High vibration detected";
 
     return { ...m, risk, priority, explanation };
 }
@@ -924,8 +1084,24 @@ function renderHomeChart() {
                 responsive: true, 
                 maintainAspectRatio: false, 
                 animation: false, 
-                plugins: { legend: { display: false } }, 
-                scales: { x: { display: false }, y: { display: false, min: 0, max: 10 } } 
+                plugins: { 
+                    legend: { display: false },
+                    threshold: { value: THRESHOLDS.vib }
+                }, 
+                scales: { 
+                    x: { 
+                        display: true, 
+                        grid: { color: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' },
+                        ticks: { display: false }
+                    }, 
+                    y: { 
+                        display: true, 
+                        min: 0, 
+                        max: 10,
+                        grid: { color: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)' },
+                        ticks: { color: '#849495', font: { size: 10 } }
+                    } 
+                } 
             }
         });
     }
@@ -948,9 +1124,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-window.showPage = showPage;
-window.handleSidebarNav = handleSidebarNav;
+window.handleSimpleLogin = handleSimpleLogin;
+window.showSimplePage = showSimplePage;
 window.handleLogout = handleLogout;
-window.handleLogin = handleLogin;
-window.selectRole = selectRole;
-window.goBackToWelcome = goBackToWelcome;
+window.simulateFailure = simulateFailure;
+window.resetSimulation = resetSimulation;
+window.exportAlertsCSV = exportAlertsCSV;
+window.hideCacheBanner = hideCacheBanner;
