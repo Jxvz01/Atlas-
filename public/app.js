@@ -20,7 +20,6 @@ async function init() {
     const token = localStorage.getItem('atlas_token');
     const user = JSON.parse(localStorage.getItem('atlas_user') || '{}');
     
-    // 1. Initial State: Show Welcome Screen if not logged in
     if (!token) {
         document.getElementById('welcomeScreen').style.display = 'flex';
         document.getElementById('login-container').style.display = 'none';
@@ -28,29 +27,37 @@ async function init() {
         return;
     }
 
-    // 2. Auth Success State: Setup Dashboard
     currentRole = user.role || "ENGINEER";
     const roleIndicator = document.getElementById('roleIndicator');
     if (roleIndicator) roleIndicator.textContent = currentRole;
 
     renderRoleUI();
 
-    // 3. Data Initialization
-    ["CNC_01", "CNC_02", "PUMP_03", "CONVEYOR_04"].forEach(id => {
-        historyMap[id] = {
-            temp: Array(30).fill(0), vib: Array(30).fill(0),
-            rpm: Array(30).fill(0), curr: Array(30).fill(0)
-        };
-    });
-
-    if (machineData.length === 0) {
-        machineData = ["CNC_01", "CNC_02", "PUMP_03", "CONVEYOR_04"].map(id => ({
-            machine_id: id, temperature: 0, vibration: 0, rpm: 0, current: 0, 
-            risk: 'LOW', priority: 1, explanation: 'Syncing...'
-        }));
+    // TACTICAL 1: Load Persistence from LocalStorage
+    const savedHistory = localStorage.getItem('atlas_history_map');
+    if (savedHistory) {
+        historyMap = JSON.parse(savedHistory);
+    } else {
+        ["CNC_01", "CNC_02", "PUMP_03", "CONVEYOR_04"].forEach(id => {
+            historyMap[id] = {
+                temp: Array(30).fill(0), vib: Array(30).fill(0),
+                rpm: Array(30).fill(0), curr: Array(30).fill(0)
+            };
+        });
     }
 
-    // 4. UI Transition
+    if (machineData.length === 0) {
+        const savedData = localStorage.getItem('atlas_machine_data');
+        if (savedData) {
+            machineData = JSON.parse(savedData);
+        } else {
+            machineData = ["CNC_01", "CNC_02", "PUMP_03", "CONVEYOR_04"].map(id => ({
+                machine_id: id, temperature: 0, vibration: 0, rpm: 0, current: 0, 
+                risk: 'LOW', priority: 1, explanation: 'Syncing...'
+            }));
+        }
+    }
+
     populateStaticShells();
     document.getElementById('welcomeScreen').style.display = 'none';
     document.getElementById('login-container').style.display = 'none';
@@ -149,15 +156,17 @@ function showPage(pageId) {
     const selectedPage = document.getElementById(pageId);
     if (selectedPage) selectedPage.style.display = "block";
 
-    const tabs = {
+    const tabMap = {
         'homePage': 'homeTab',
         'digitalTwinPage': 'digitalTab',
         'alertStackPage': 'alertsTab',
-        'analyticsPage': 'analyticsTab'
+        'analyticsPage': 'analyticsTab',
+        'diagnosticsPage': 'diagTab',
+        'schedulerPage': 'schedTab'
     };
     
     document.querySelectorAll('.view-links a').forEach(tab => tab.classList.remove('active'));
-    const activeTabId = tabs[pageId];
+    const activeTabId = tabMap[pageId];
     if (activeTabId) {
         const tabEl = document.getElementById(activeTabId);
         if (tabEl) tabEl.classList.add('active');
@@ -173,6 +182,8 @@ function showPage(pageId) {
 
     if (pageId === 'digitalTwinPage') startDigitalTwin();
     else stopDigitalTwin();
+    
+    if (pageId === 'schedulerPage') renderSchedulerContent();
 }
 
 function renderRoleUI() {
@@ -183,24 +194,28 @@ function renderRoleUI() {
     if (currentRole === 'ENGINEER') {
         sidebar.innerHTML = `
             <a href="#" class="nav-item active" id="overviewBtn" onclick="handleSidebarNav('homePage', 'overview', 'overviewBtn')">OVERVIEW</a>
-            <a href="#" class="nav-item" id="analBtn" onclick="showPage('analyticsPage')">ANALYTICS</a>
             <a href="#" class="nav-item" id="riskBtn" onclick="handleSidebarNav('homePage', 'riskMatrix', 'riskBtn')">RISK MATRIX</a>
+            <a href="#" class="nav-item" id="aiBtn" onclick="toggleAIInsights()">AI INSIGHTS</a>
+            <a href="#" class="nav-item" id="logBtn" onclick="showPage('diagnosticsPage')">SYSTEM LOG</a>
         `;
         topNav.innerHTML = `
             <a href="#" class="active" id="homeTab" onclick="showPage('homePage')">HOME</a>
             <a href="#" id="digitalTab" onclick="showPage('digitalTwinPage')">DIGITAL TWIN</a>
             <a href="#" id="analyticsTab" onclick="showPage('analyticsPage')">ANALYTICS</a>
+            <a href="#" id="schedTab" onclick="showPage('schedulerPage')">SCHEDULER</a>
         `;
     } else {
         sidebar.innerHTML = `
             <a href="#" class="nav-item active" id="teleBtn" onclick="handleSidebarNav('homePage', 'telemetry', 'teleBtn')">TELEMETRY</a>
             <a href="#" class="nav-item" id="diagBtn" onclick="showPage('diagnosticsPage')">DIAGNOSTICS</a>
             <a href="#" class="nav-item" id="alertBtn" onclick="showPage('alertStackPage')">ALERT STACK</a>
+            <a href="#" class="nav-item" id="logBtn" onclick="showPage('diagnosticsPage')">SYSTEM LOG</a>
         `;
         topNav.innerHTML = `
             <a href="#" class="active" id="homeTab" onclick="showPage('homePage')">HOME</a>
             <a href="#" id="digitalTab" onclick="showPage('digitalTwinPage')">DIGITAL TWIN</a>
             <a href="#" id="alertsTab" onclick="showPage('alertStackPage')">ALERT STACK</a>
+            <a href="#" id="diagTab" onclick="showPage('diagnosticsPage')">DIAGNOSTICS</a>
         `;
     }
 }
@@ -405,6 +420,68 @@ function updateDigitalTwinDynamic() {
 }
 
 /**
+ * TACTICAL 3: MAINTENANCE SCHEDULER
+ */
+function renderSchedulerContent() {
+    const container = document.getElementById('schedulerPage');
+    const priorityNodes = machineData.filter(m => m.risk !== 'LOW');
+    
+    container.innerHTML = `
+        <div class="view-header">
+            <div class="view-title">
+                <h2>Maintenance <span>Scheduler</span></h2>
+                <div class="view-subtitle">Dynamic Resource Allocation Based on AI Priority</div>
+            </div>
+            <button class="action-btn primary" onclick="exportDataToCSV()">EXPORT DATASET (CSV)</button>
+        </div>
+
+        <div class="card-grid">
+            <div class="atlas-card">
+                <div class="m-card-header"><h4>ACTIVE QUEUE</h4></div>
+                <div class="m-explanation" style="margin-top:0.5rem">Machines currently requiring urgent intervention:</div>
+                <div id="schedulerList" style="margin-top: 1.5rem;">
+                    ${priorityNodes.length ? priorityNodes.map(m => `
+                        <div style="padding: 1rem; background: rgba(255,255,255,0.03); margin-bottom: 0.5rem; border-left: 3px solid ${m.risk === 'HIGH' ? '#ff4d4d' : '#ff9800'}; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong style="color:#fff">${m.machine_id}</strong><br>
+                                <span style="font-size:0.75rem; color:var(--text-muted)">Reason: ${m.explanation}</span>
+                            </div>
+                            <button class="action-btn secondary" style="padding: 4px 8px; font-size: 0.7rem;" onclick="alert('Maintenance window for ${m.machine_id} locked to 14:00 Today')">SCHEDULE</button>
+                        </div>
+                    `).join('') : '<p style="color:#666">No urgent machines in queue.</p>'}
+                </div>
+            </div>
+
+            <div class="atlas-card">
+                <div class="m-card-header"><h4>STRATEGIC PLAN</h4></div>
+                <p style="font-size: 0.8rem; color: #888;">AI predicts optimal service window for Nominal nodes to be in 72h.</p>
+                <div style="margin-top: 2rem; padding: 1rem; border: 1px dashed #444; text-align: center;">
+                    <span style="color:#aaa; font-style:italic">Optimization algorithms running...</span>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * TACTICAL 5: EXPORT CENTER
+ */
+function exportDataToCSV() {
+    let csv = "Machine_ID,Temperature,Vibration,RPM,Current,Risk,Explanation\n";
+    machineData.forEach(m => {
+        csv += `${m.machine_id},${m.temperature},${m.vibration},${m.rpm},${m.current},${m.risk},"${m.explanation}"\n`;
+    });
+    
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.setAttribute('href', url);
+    a.setAttribute('download', `ATLAS_FLEET_REPORT_${Date.now()}.csv`);
+    a.click();
+    logToSystem("FLEET DATASET EXPORTED TO CSV.");
+}
+
+/**
  * 3. ALERT STACK
  */
 function updateAlertStackDynamic() {
@@ -528,15 +605,48 @@ function renderDiagnosticsContent() {
                 <div class="view-subtitle">Deep Inspection Mode • Secure Node: OSCAR-09</div>
             </div>
         </div>
-        <div class="atlas-card status-warn" style="max-width: 600px;">
-            <div class="m-card-header"><h4>MANUAL SYNC OVERRIDE</h4></div>
-            <p style="margin-bottom: 1.5rem;">Force a hardware-level diagnostic sync on all active nodes. This will bypass standard polling cycles.</p>
-            <div style="display: flex; gap: 1rem;">
-                <button class="action-btn primary" onclick="alert('Initiating Core Sync...')">FORCE SYNC</button>
-                <button class="action-btn secondary" onclick="alert('Clearing Neural Cache...')">CLEAR CACHE</button>
+        <div class="card-grid">
+            <div class="atlas-card">
+                <div class="m-card-header"><h4>CORE INSPECTION</h4></div>
+                <p style="margin-bottom: 1.5rem;">Perform a full hardware-level diagnostic test on all active axes and thermal sensors.</p>
+                <button class="action-btn primary" onclick="handleAction('Diagnostics Result: ALL SENSORS NOMINAL')">REQUEST DIAGNOSTICS</button>
+            </div>
+            <div class="atlas-card status-warn" id="isolation-card">
+                <div class="m-card-header"><h4>SAFETY ISOLATION</h4></div>
+                <p style="margin-bottom: 1.5rem;">Isolate faulty machine axes to prevent cascading gear failure during thermal drift.</p>
+                <button class="action-btn secondary" onclick="handleAction('AXIS-09 ISOLATED. MECHANICAL HOLD ACTIVATED.')">ISOLATE AXIS</button>
             </div>
         </div>
+
+        <div class="view-header" style="margin-top: 4rem;"><h3>SYSTEM TRAFFIC LOG</h3></div>
+        <div class="atlas-card" style="font-family: monospace; font-size: 0.75rem; color: #0f0; background: #000; opacity: 0.8; height: 300px; overflow-y: auto; line-height: 1.8;" id="systemLogBox">
+            [14:22:01] 📡 NODE_01: SYNC_VALIDATED<br>
+            [14:22:03] ⚙️ DRIFT_CALC: 0.002mm/s<br>
+            [14:22:05] 🛰️ SSE_LINK: ESTABLISHED<br>
+            [14:22:08] 🧠 BRAIN_ENGINE: NOISE_FILTER_ACTIVE<br>
+        </div>
     `;
+}
+
+function handleAction(msg) {
+    alert(msg);
+    logToSystem(`${msg}`);
+}
+
+function logToSystem(msg) {
+    const box = document.getElementById('systemLogBox');
+    if (box) {
+        const time = new Date().toLocaleTimeString();
+        box.innerHTML += `[${time}] ${msg}<br>`;
+        box.scrollTop = box.scrollHeight;
+    }
+}
+
+function toggleAIInsights() {
+    const sidebar = document.querySelector('.insight-sidebar');
+    if (sidebar) {
+        sidebar.style.display = sidebar.style.display === 'none' ? 'block' : 'none';
+    }
 }
 
 function renderInsights() {
@@ -618,6 +728,10 @@ function connectToSensorStreams() {
 
         updateAlertStackDynamic();
         renderInsights();
+
+        // TACTICAL 1: Save State to LocalStorage
+        localStorage.setItem('atlas_history_map', JSON.stringify(historyMap));
+        localStorage.setItem('atlas_machine_data', JSON.stringify(machineData));
     }, 1000);
 }
 
