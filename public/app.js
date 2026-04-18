@@ -1,7 +1,7 @@
 // CONFIG — In production, proxy this through a backend. For demo: keep here but do not commit secrets.
 const CONFIG = {
     SHEETS_URL: 'https://script.google.com/macros/s/AKfycbzonNgkC5QCkaRDg8dnPBlAu4pKTtsKt9l7L6aHhyOQNxsrA2GD28PjW_vB5LVZtHgXUQ/exec',
-    SIMULATION_SERVER: 'http://localhost:3000',
+    SIMULATION_SERVER: window.location.origin,
     // TODO: Move to server-side proxy before production deployment
 };
 
