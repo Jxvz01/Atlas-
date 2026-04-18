@@ -2,8 +2,16 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 
+const fs = require('fs');
+
 const app = express();
 const PORT = 8000;
+const DATA_DIR = path.join(__dirname, 'data');
+const DATA_FILE = path.join(DATA_DIR, 'telemetry_archive.json');
+
+// Ensure data directory exists
+if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR);
+if (!fs.existsSync(DATA_FILE)) fs.writeFileSync(DATA_FILE, JSON.stringify({ archives: [] }));
 
 app.use(cors());
 app.use(express.json());
@@ -141,7 +149,43 @@ app.post('/api/login', (req, res) => {
     }
 });
 
+/**
+ * TACTICAL: GET DATA FROM DISK
+ */
+app.get('/api/get-telemetry', (req, res) => {
+    try {
+        if (fs.existsSync(DATA_FILE)) {
+            const data = fs.readFileSync(DATA_FILE, 'utf8');
+            const parsed = JSON.parse(data);
+            res.json({ success: true, ...parsed });
+        } else {
+            res.json({ success: false, message: 'NO_ARCHIVE_FOUND' });
+        }
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'DISK_READ_FAILURE' });
+    }
+});
+app.post('/api/save-telemetry', (req, res) => {
+    try {
+        const { machineData, historyMap } = req.body;
+        const timestamp = new Date().toISOString();
+        
+        // We overwrite the latest state for simplicity, or we could append
+        const payload = {
+            last_updated: timestamp,
+            machineData,
+            historyMap
+        };
+        
+        fs.writeFileSync(DATA_FILE, JSON.stringify(payload, null, 2));
+        res.json({ success: true, message: 'TELEMETRY ARCHIVED TO DISK' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'DISK_WRITE_FAILURE' });
+    }
+});
+
 app.listen(PORT, () => {
     console.log(`ATLAS+ Node Backend running at http://localhost:${PORT}`);
     console.log(`Serving static assets from ../public/`);
+    console.log(`Telemetry Archival active: ${DATA_FILE}`);
 });

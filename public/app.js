@@ -58,6 +58,19 @@ async function init() {
         }
     }
 
+    // DUAL-LAYER PERSISTENCE: Attempt Server Disk Load if LocalStorage is empty
+    if (!savedHistory) {
+        try {
+            const serverRes = await fetch('/api/get-telemetry'); 
+            const serverData = await serverRes.json();
+            if (serverData.success) {
+                historyMap = serverData.historyMap;
+                machineData = serverData.machineData;
+                console.log("💾 LOADED STATE FROM SERVER DISK.");
+            }
+        } catch(e) { /* Fallback to defaults */ }
+    }
+
     populateStaticShells();
     document.getElementById('welcomeScreen').style.display = 'none';
     document.getElementById('login-container').style.display = 'none';
@@ -452,11 +465,18 @@ function renderSchedulerContent() {
                 </div>
             </div>
 
-            <div class="atlas-card">
-                <div class="m-card-header"><h4>STRATEGIC PLAN</h4></div>
-                <p style="font-size: 0.8rem; color: #888;">AI predicts optimal service window for Nominal nodes to be in 72h.</p>
-                <div style="margin-top: 2rem; padding: 1rem; border: 1px dashed #444; text-align: center;">
-                    <span style="color:#aaa; font-style:italic">Optimization algorithms running...</span>
+            <div class="atlas-card" id="cloudSyncPanel">
+                <div class="m-card-header"><h4>☁️ CLOUD SYNC: GOOGLE SHEETS</h4></div>
+                <p style="font-size: 0.8rem; color: #888; margin-bottom: 1.5rem;">Stream live telemetry to your Google Apps Script Webhook for cloud-based reporting.</p>
+                
+                <div class="input-group">
+                    <label>WEBHOOK URL</label>
+                    <input type="text" id="googleSheetUrl" placeholder="https://script.google.com/macros/..." style="width:100%; padding:0.8rem; background:rgba(0,0,0,0.3); border:1px solid #444; color:#fff;" />
+                </div>
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem;">
+                    <span id="syncStatus" style="font-size: 0.75rem; color: #666;">Status: DISCONNECTED</span>
+                    <button class="action-btn secondary" id="syncToggleBtn" onclick="toggleCloudSync()">INITIALIZE SYNC</button>
                 </div>
             </div>
         </div>
@@ -464,8 +484,50 @@ function renderSchedulerContent() {
 }
 
 /**
- * TACTICAL 5: EXPORT CENTER
+ * GOOGLE SHEETS CLOUD SYNC
  */
+let cloudSyncActive = false;
+let cloudSyncInterval = null;
+
+function toggleCloudSync() {
+    const url = document.getElementById('googleSheetUrl').value;
+    const statusEl = document.getElementById('syncStatus');
+    const btn = document.getElementById('syncToggleBtn');
+    
+    if (cloudSyncActive) {
+        clearInterval(cloudSyncInterval);
+        cloudSyncActive = false;
+        btn.textContent = "INITIALIZE SYNC";
+        statusEl.textContent = "Status: DISCONNECTED";
+        statusEl.style.color = "#666";
+        logToSystem("CLOUD SYNC TERMINATED.");
+    } else {
+        if (!url.startsWith('https://script.google.com')) {
+            alert("Invalid Script URL. Please use a valid Google Apps Script Web App URL.");
+            return;
+        }
+        cloudSyncActive = true;
+        btn.textContent = "DISABLE SYNC";
+        statusEl.textContent = "Status: STREAMING...";
+        statusEl.style.color = "#11ff9b";
+        
+        cloudSyncInterval = setInterval(async () => {
+            try {
+                // We use no-cors if needed, but standard POST usually works for script macros
+                await fetch(url, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ machineData, timestamp: new Date() })
+                });
+                console.log("☁️ SYNCED TO GOOGLE SHEETS.");
+            } catch (e) {
+                console.error("Cloud Sync Error:", e);
+            }
+        }, 10000); // 10s sync interval
+        logToSystem("CLOUD SYNC INITIALIZED SUCCESSFULY.");
+    }
+}
 function exportDataToCSV() {
     let csv = "Machine_ID,Temperature,Vibration,RPM,Current,Risk,Explanation\n";
     machineData.forEach(m => {
@@ -732,7 +794,22 @@ function connectToSensorStreams() {
         // TACTICAL 1: Save State to LocalStorage
         localStorage.setItem('atlas_history_map', JSON.stringify(historyMap));
         localStorage.setItem('atlas_machine_data', JSON.stringify(machineData));
+
+        // TACTICAL: Save to Server Disk every 15 ticks
+        window.saveCount = (window.saveCount || 0) + 1;
+        if (window.saveCount % 15 === 0) saveToServerDisk();
     }, 1000);
+}
+
+async function saveToServerDisk() {
+    try {
+        await fetch('/api/save-telemetry', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ machineData, historyMap })
+        });
+        console.log("📂 ARCHIVED TO DISK.");
+    } catch (e) { console.error("Disk Sync Failed."); }
 }
 
 function processMachineData(m) {
