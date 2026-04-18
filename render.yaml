@@ -1,0 +1,21 @@
+services:
+  # Node.js Backend + Static Frontend
+  - type: web
+    name: atlas-node-backend
+    env: node
+    rootDir: node_backend
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: PORT
+        value: 8000
+    plan: free
+
+  # FastAPI Backend
+  - type: web
+    name: atlas-python-backend
+    env: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    plan: free
