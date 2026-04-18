@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ATLAS+ | Tactical Intelligence Portal</title>
+    <title>ATLAS+ | Predictive Intelligence System</title>
+    <meta name="description" content="AI-powered predictive maintenance dashboard for industrial machine monitoring">
     <link rel="stylesheet" href="/static/style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -11,64 +12,50 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <div id="cache-banner" class="cache-banner" style="display: none; position: sticky; top: 0; z-index: 1000; background: #ffcc00; color: #000; padding: 10px; font-weight: 600; text-align: center; font-size: 0.8rem;"></div>
-    <!-- 1. ENTRY PORTAL (Simplified) -->
+    <div id="cache-banner" class="cache-banner" style="display: none;"></div>
+
+    <!-- ══════════════════════════════════════
+         1. ENTRY PORTAL — ATMOSPHERIC LOGIN
+         ══════════════════════════════════════ -->
     <div id="welcomeScreen" class="entry-portal">
-        <div class="portal-content" style="max-width: 400px; padding: 2.5rem;">
-            <div class="portal-header" style="margin-bottom: 2rem; text-align: center;">
-                <h1 class="portal-title" style="font-size: 2.5rem;">ATLAS<span>+</span></h1>
-                <p class="portal-subtitle">SECURE TERMINAL ACCESS</p>
+        <!-- Floating particle canvas -->
+        <canvas id="particleCanvas" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:0;"></canvas>
+
+        <div class="portal-content">
+            <div class="portal-header" style="margin-bottom: 2.5rem; text-align: center;">
+                <h1 class="portal-title">ATLAS<span>+</span></h1>
+                <p class="portal-subtitle">PREDICTIVE MAINTENANCE INTELLIGENCE</p>
             </div>
-            
-            <div class="auth-form" style="display: flex; flex-direction: column; gap: 1.5rem;">
+
+            <div class="auth-form" style="display: flex; flex-direction: column; gap: 1.25rem;">
                 <div class="input-group">
-                    <label style="color: var(--text-muted); font-size: 0.7rem; letter-spacing: 2px;">OPERATOR NAME</label>
-                    <input type="text" id="operatorName" placeholder="Enter name..." style="width: 100%; padding: 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: #fff; outline: none;" />
+                    <label>OPERATOR NAME</label>
+                    <input type="text" id="operatorName" placeholder="Enter your name..." />
                 </div>
                 <div class="input-group">
-                    <label style="color: var(--text-muted); font-size: 0.7rem; letter-spacing: 2px;">ACCESS ROLE</label>
-                    <select id="operatorRole" style="width: 100%; padding: 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: #fff; outline: none;">
+                    <label>ACCESS ROLE</label>
+                    <select id="operatorRole">
                         <option value="ENGINEER">Engineer</option>
                         <option value="TECHNICIAN">Technician</option>
                     </select>
                 </div>
-                <button class="action-btn primary" onclick="handleSimpleLogin()" style="width: 100%; padding: 14px; margin-top: 1rem;">INITIALIZE PORTAL</button>
+                <button class="action-btn primary" onclick="handleSimpleLogin()" style="width: 100%; padding: 14px; margin-top: 0.75rem; font-size: 0.8rem;">
+                    INITIALIZE SESSION →
+                </button>
             </div>
 
-            <div class="portal-footer" style="margin-top: 2.5rem; justify-content: center;">
-                <span class="status-msg" style="font-size: 0.6rem; opacity: 0.5;">ATLAS_V4.0 • PRODUCTION READY</span>
+            <div class="portal-footer">
+                <span class="pulse-dot"></span>
+                <span class="status-msg">ATLAS V4.0 • SYSTEM ONLINE</span>
             </div>
         </div>
     </div>
 
-    <!-- 2. LOGIN OVERLAY (Hidden initially) -->
-    <div id="login-container" class="auth-wrapper" style="display: none;">
-        <div class="auth-card">
-            <div class="auth-header">
-                <h2 id="loginTitle">ROLE AUTHENTICATION</h2>
-                <button class="back-btn" onclick="goBackToWelcome()">← BACK</button>
-            </div>
-            <div class="auth-form" id="loginForm">
-                <div class="input-group">
-                    <label>OPERATOR_ID</label>
-                    <input type="text" id="username" placeholder="Enter ID..." required />
-                </div>
-                <div class="input-group">
-                    <label>ACCESS_KEY</label>
-                    <input type="password" id="password" placeholder="••••••••" required />
-                </div>
-                <div id="auth-error" class="auth-error"></div>
-                <button type="submit" class="auth-submit" onclick="handleLogin()">ACCESS PORTAL</button>
-            </div>
-            <div class="auth-footer">
-                <span>SYSTEM: READY</span>
-                <span>NODE: OSCAR-09</span>
-            </div>
-        </div>
-    </div>
-
+    <!-- ══════════════════════════════════════
+         2. MAIN APPLICATION SHELL
+         ══════════════════════════════════════ -->
     <div class="app-container" style="display: none;">
-        <!-- SIDEBAR NAVIGATION -->
+        <!-- SIDEBAR -->
         <aside class="side-nav">
             <div class="side-top">
                 <div class="brand">ATLAS<span>+</span></div>
@@ -85,7 +72,7 @@
                 <!-- Dynamically rendered by role -->
             </nav>
 
-            <button class="emergency-btn">EMERGENCY STOP</button>
+            <button class="emergency-btn">⚠ EMERGENCY STOP</button>
         </aside>
 
         <!-- MAIN WORKSPACE -->
@@ -97,25 +84,16 @@
                 </nav>
 
                 <div class="top-actions">
-                    <div class="role-selector-wrap" style="margin-right: 1.5rem;">
-                        <select id="roleSelector" onchange="switchRole(this.value)" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 4px 8px; border-radius: 4px; font-family: inherit; font-size: 0.75rem;">
-                            <option value="ENGINEER">Engineer view</option>
-                            <option value="TECHNICIAN">Technician view</option>
-                        </select>
-                    </div>
                     <div class="profile-module">
-                        <div class="profile-info">
-                            <span class="role-label" id="roleIndicator">ENGINEER</span>
-                        </div>
+                        <span class="role-label" id="roleIndicator">ENGINEER</span>
                         <div class="user-avatar"></div>
                     </div>
                     <button class="logout-btn" onclick="handleLogout()">LOGOUT</button>
-                    <span class="icon-btn" title="System Settings">⚙️</span>
                 </div>
             </header>
 
             <div class="dashboard-grid">
-                <!-- VIEWPORT ENGINE -->
+                <!-- VIEWPORT -->
                 <div class="viewport-content" id="viewport">
                     <section id="homePage" class="page"></section>
                     <section id="digitalTwinPage" class="page" style="display: none;"></section>
@@ -149,7 +127,77 @@
         </main>
     </div>
 
+    <!-- Particle animation for login portal -->
+    <script>
+    (function() {
+        const canvas = document.getElementById('particleCanvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        const PARTICLE_COUNT = 50;
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resize();
+        window.addEventListener('resize', resize);
+
+        function createParticle() {
+            return {
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                vx: (Math.random() - 0.5) * 0.3,
+                vy: (Math.random() - 0.5) * 0.3,
+                radius: Math.random() * 1.5 + 0.5,
+                opacity: Math.random() * 0.3 + 0.05
+            };
+        }
+
+        for (let i = 0; i < PARTICLE_COUNT; i++) {
+            particles.push(createParticle());
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            particles.forEach(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+
+                if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+                if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(0, 229, 255, ${p.opacity})`;
+                ctx.fill();
+            });
+
+            // Draw connections
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 150) {
+                        ctx.beginPath();
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.strokeStyle = `rgba(0, 229, 255, ${0.03 * (1 - dist / 150)})`;
+                        ctx.lineWidth = 0.5;
+                        ctx.stroke();
+                    }
+                }
+            }
+
+            requestAnimationFrame(draw);
+        }
+        draw();
+    })();
+    </script>
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="/static/app.js?v=4.0"></script>
+    <script src="/static/app.js?v=5.0"></script>
 </body>
 </html>
