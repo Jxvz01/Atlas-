@@ -470,8 +470,8 @@ function renderSchedulerContent() {
                 <p style="font-size: 0.8rem; color: #888; margin-bottom: 1.5rem;">Stream live telemetry to your Google Apps Script Webhook for cloud-based reporting.</p>
                 
                 <div class="input-group">
-                    <label>WEBHOOK URL</label>
-                    <input type="text" id="googleSheetUrl" placeholder="https://script.google.com/macros/..." style="width:100%; padding:0.8rem; background:rgba(0,0,0,0.3); border:1px solid #444; color:#fff;" />
+                    <label>WEBHOOK URL (PRE-CONFIGURED)</label>
+                    <input type="text" id="googleSheetUrl" value="https://script.google.com/macros/s/AKfycbzonNgkC5QCkaRDg8dnPBlAu4pKTtsKt9l7L6aHhyOQNxsrA2GD28PjW_vB5LVZtHgXUQ/exec" style="width:100%; padding:0.8rem; background:rgba(0,0,0,0.3); border:1px solid #444; color:#fff;" />
                 </div>
                 
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem;">
@@ -513,18 +513,29 @@ function toggleCloudSync() {
         
         cloudSyncInterval = setInterval(async () => {
             try {
-                // We use no-cors if needed, but standard POST usually works for script macros
+                // Ensure data is synced right before send
                 await fetch(url, {
                     method: 'POST',
                     mode: 'no-cors',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ machineData, timestamp: new Date() })
+                    body: JSON.stringify({ 
+                        machineData: machineData.map(m => ({
+                            machine_id: m.machine_id,
+                            temperature: m.temperature.toFixed(1),
+                            vibration: m.vibration.toFixed(2),
+                            current: m.current.toFixed(1),
+                            rpm: Math.round(m.rpm),
+                            risk: m.risk,
+                            explanation: m.explanation
+                        })), 
+                        timestamp: new Date() 
+                    })
                 });
-                console.log("☁️ SYNCED TO GOOGLE SHEETS.");
+                console.log("☁️ SYNCED TO EXCEL (G-SHEETS).");
             } catch (e) {
                 console.error("Cloud Sync Error:", e);
             }
-        }, 10000); // 10s sync interval
+        }, 10000); 
         logToSystem("CLOUD SYNC INITIALIZED SUCCESSFULY.");
     }
 }
